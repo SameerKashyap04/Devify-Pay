@@ -11,4 +11,4 @@ RUN pnpm --filter @devify/database prisma generate
 RUN pnpm --filter @devify/api build
 
 EXPOSE 4000
-CMD ["node", "apps/api/dist/server.js"]
+CMD ["pnpm", "--filter", "@devify/api", "start"]
