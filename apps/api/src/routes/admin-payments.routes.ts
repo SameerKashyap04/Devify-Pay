@@ -26,7 +26,7 @@ export async function adminPaymentRoutes(app: FastifyInstance) {
     });
 
     return {
-      data: payments.map((p) => ({
+      data: payments.map((p: any) => ({
         ...serializePayment(p),
         order_id: p.order.publicId,
         application: p.application.name,
@@ -44,7 +44,7 @@ export async function adminPaymentRoutes(app: FastifyInstance) {
     });
 
     return {
-      data: payments.map((p) => ({
+      data: payments.map((p: any) => ({
         payment_id: p.publicId,
         order_id: p.order.publicId,
         application: p.application.name,

@@ -63,7 +63,7 @@ export async function refundRoutes(app: FastifyInstance) {
       orderBy: { createdAt: "asc" },
     });
     return {
-      data: refunds.map((r) => ({
+      data: refunds.map((r: any) => ({
         id: r.publicId,
         payment_id: r.payment.publicId,
         application: r.application.name,

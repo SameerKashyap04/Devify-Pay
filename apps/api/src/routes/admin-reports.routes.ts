@@ -28,7 +28,7 @@ export async function adminReportRoutes(app: FastifyInstance) {
       orderBy: { createdAt: "desc" },
     });
 
-    const rows = payments.map((p) => ({
+    const rows = payments.map((p: any) => ({
       payment_id: p.publicId,
       order_id: p.order.publicId,
       application: p.application.name,
@@ -55,7 +55,7 @@ export async function adminReportRoutes(app: FastifyInstance) {
       orderBy: { createdAt: "desc" },
     });
 
-    const rows = payments.map((p) => ({
+    const rows = payments.map((p: any) => ({
       payment_id: p.publicId,
       application: p.application.name,
       amount: p.amount,
@@ -82,7 +82,7 @@ export async function adminReportRoutes(app: FastifyInstance) {
       orderBy: { createdAt: "desc" },
     });
 
-    const rows = refunds.map((r) => ({
+    const rows = refunds.map((r: any) => ({
       refund_id: r.publicId,
       payment_id: r.payment.publicId,
       application: r.application.name,
@@ -105,7 +105,7 @@ export async function adminReportRoutes(app: FastifyInstance) {
       orderBy: { createdAt: "desc" },
     });
 
-    const rows = subs.map((s) => ({
+    const rows = subs.map((s: any) => ({
       subscription_id: s.id,
       application: s.application.name,
       plan: s.plan.name,
@@ -128,7 +128,7 @@ export async function adminReportRoutes(app: FastifyInstance) {
       orderBy: { createdAt: "desc" },
     });
 
-    const rows = apps.map((a) => ({
+    const rows = apps.map((a: any) => ({
       application: a.name,
       status: a.status,
       orders: a._count.orders,

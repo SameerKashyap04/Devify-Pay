@@ -21,7 +21,7 @@ export async function createRefund(params: {
   const existingRefunds = await prisma.refund.findMany({
     where: { paymentId: payment.id, status: { in: ["SUCCESS", "PROCESSING", "PENDING"] } },
   });
-  const alreadyRefunded = existingRefunds.reduce((sum, r) => sum + r.amount, 0);
+  const alreadyRefunded = existingRefunds.reduce((sum: number, r: any) => sum + r.amount, 0);
   const refundAmount = params.amount ?? payment.amount - alreadyRefunded;
 
   if (refundAmount <= 0 || alreadyRefunded + refundAmount > payment.amount) {

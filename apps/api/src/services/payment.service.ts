@@ -160,7 +160,7 @@ export async function adminVerifyPayment(params: {
   const newStatus = params.action === "APPROVE" ? "SUCCESS" : "FAILED";
   assertValidTransition(payment.status as any, newStatus as any);
 
-  const result = await prisma.$transaction(async (tx) => {
+  const result = await prisma.$transaction(async (tx: any) => {
     const updatedPayment = await tx.payment.update({
       where: { id: payment.id },
       data: { status: newStatus },
