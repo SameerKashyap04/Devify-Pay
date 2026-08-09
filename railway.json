@@ -5,7 +5,7 @@
     "buildCommand": "pnpm --filter @devify/database prisma generate && pnpm --filter @devify/api build"
   },
   "deploy": {
-    "startCommand": "pnpm --filter @devify/database prisma migrate deploy && node apps/api/dist/server.js",
+    "startCommand": "pnpm --filter @devify/database run prisma:deploy && node apps/api/dist/server.js",
     "healthcheckPath": "/health",
     "healthcheckTimeout": 120,
     "restartPolicyType": "ON_FAILURE",
