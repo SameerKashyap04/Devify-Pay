@@ -161,12 +161,20 @@ async function buildServer() {
 
 async function main() {
   const app = await buildServer();
-  startWebhookWorker();
+
+  try {
+    startWebhookWorker();
+  } catch (err) {
+    app.log.warn({ err }, "Webhook worker failed to initialize, API server proceeding");
+  }
 
   try {
     await app.ready();
-    await app.listen({ port: env.API_PORT, host: "0.0.0.0" });
-    app.log.info(`Devify Pay API listening on port ${env.API_PORT}`);
+    const port = Number(process.env.PORT || env.API_PORT || 4000);
+    await app.listen({ port, host: "0.0.0.0" });
+    app.log.info(
+      `Starting Devify Pay...\nEnvironment: ${env.NODE_ENV}\nServer listening on 0.0.0.0:${port}\nHealth endpoint: /health`
+    );
   } catch (err) {
     app.log.error(err);
     process.exit(1);
