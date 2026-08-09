@@ -28,12 +28,12 @@
     "pino": "^9.3.2",
     "qrcode": "^1.5.4",
     "tsx": "^4.16.2",
+    "typescript": "^5.5.4",
     "zod": "^3.23.8"
   },
   "devDependencies": {
     "@types/qrcode": "^1.5.5",
     "supertest": "^7.0.0",
-    "typescript": "^5.5.4",
     "vitest": "^2.0.5"
   }
 }
