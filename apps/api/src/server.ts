@@ -148,6 +148,10 @@ async function buildServer() {
     transformStaticCSP: (header) => header,
   });
 
+  app.get("/", async (_req, reply) => {
+    reply.redirect("/documentation/");
+  });
+
   app.get("/docs", async (_req, reply) => {
     reply.redirect("/documentation/");
   });
