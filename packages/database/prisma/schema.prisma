@@ -1,0 +1,493 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------------------------
+// ENUMS
+// ---------------------------------------------------------------------------
+
+enum ApplicationStatus {
+  ACTIVE
+  DISABLED
+  SUSPENDED
+}
+
+enum ApiKeyEnvironment {
+  TEST
+  LIVE
+}
+
+enum ApiKeyStatus {
+  ACTIVE
+  REVOKED
+}
+
+enum OrderStatus {
+  PENDING
+  PAID
+  FAILED
+  EXPIRED
+  CANCELLED
+  REFUNDED
+  PARTIALLY_REFUNDED
+}
+
+enum PaymentStatus {
+  CREATED
+  PENDING
+  PENDING_VERIFICATION
+  PROCESSING
+  SUCCESS
+  FAILED
+  EXPIRED
+  CANCELLED
+  REFUNDED
+  PARTIALLY_REFUNDED
+}
+
+enum PaymentMethod {
+  UPI
+  CARD
+  NETBANKING
+  WALLET
+  OTHER
+}
+
+enum PaymentAttemptStatus {
+  CREATED
+  PENDING
+  PENDING_VERIFICATION
+  SUCCESS
+  FAILED
+  EXPIRED
+}
+
+enum TransactionType {
+  PAYMENT
+  REFUND
+  ADJUSTMENT
+}
+
+enum TransactionStatus {
+  PENDING
+  SUCCESS
+  FAILED
+  REVERSED
+}
+
+enum SubscriptionStatus {
+  TRIALING
+  ACTIVE
+  PAST_DUE
+  CANCELLED
+  EXPIRED
+}
+
+enum SubscriptionInterval {
+  DAY
+  WEEK
+  MONTH
+  YEAR
+}
+
+enum RefundStatus {
+  PENDING
+  PROCESSING
+  SUCCESS
+  FAILED
+  CANCELLED
+}
+
+enum WebhookEventStatus {
+  PENDING
+  DELIVERED
+  RETRYING
+  FAILED
+}
+
+enum ProviderName {
+  MANUAL_UPI
+  PHONEPE
+  PAYTM
+  RAZORPAY
+}
+
+enum Mode {
+  TEST
+  LIVE
+}
+
+// ---------------------------------------------------------------------------
+// CORE
+// ---------------------------------------------------------------------------
+
+model Application {
+  id            String            @id @default(cuid())
+  name          String
+  slug          String            @unique
+  description   String?
+  status        ApplicationStatus @default(ACTIVE)
+  webhookUrl    String?           @map("webhook_url")
+  webhookSecret String?           @map("webhook_secret")
+  createdAt     DateTime          @default(now()) @map("created_at")
+  updatedAt     DateTime          @updatedAt @map("updated_at")
+
+  apiKeys           ApiKey[]
+  customers         Customer[]
+  orders            Order[]
+  payments          Payment[]
+  transactions      Transaction[]
+  subscriptions     Subscription[]
+  plans             Plan[]
+  webhookEndpoints  WebhookEndpoint[]
+  webhookEvents     WebhookEvent[]
+  refunds           Refund[]
+
+  @@map("applications")
+}
+
+model ApiKey {
+  id            String            @id @default(cuid())
+  applicationId String            @map("application_id")
+  application   Application       @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  environment   ApiKeyEnvironment
+  keyPrefix     String            @map("key_prefix") // e.g. sk_live_ab12 (safe to display)
+  hashedSecret  String            @map("hashed_secret") // argon2/bcrypt hash, never the raw secret
+  status        ApiKeyStatus      @default(ACTIVE)
+  lastUsedAt    DateTime?         @map("last_used_at")
+  createdAt     DateTime          @default(now()) @map("created_at")
+  revokedAt     DateTime?         @map("revoked_at")
+
+  @@index([applicationId])
+  @@index([keyPrefix])
+  @@map("api_keys")
+}
+
+model Admin {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String   @map("password_hash")
+  name         String?
+  isActive     Boolean  @default(true) @map("is_active")
+  twoFaSecret  String?  @map("two_fa_secret")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  sessions AdminSession[]
+
+  @@map("admins")
+}
+
+model AdminSession {
+  id        String   @id @default(cuid())
+  adminId   String   @map("admin_id")
+  admin     Admin    @relation(fields: [adminId], references: [id], onDelete: Cascade)
+  tokenHash String   @map("token_hash")
+  ipAddress String?  @map("ip_address")
+  userAgent String?  @map("user_agent")
+  expiresAt DateTime @map("expires_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  revokedAt DateTime? @map("revoked_at")
+
+  @@index([adminId])
+  @@map("admin_sessions")
+}
+
+model Customer {
+  id            String      @id @default(cuid())
+  applicationId String      @map("application_id")
+  application   Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  name          String?
+  email         String?
+  phone         String?
+  metadata      Json?
+  createdAt     DateTime    @default(now()) @map("created_at")
+  updatedAt     DateTime    @updatedAt @map("updated_at")
+
+  orders        Order[]
+  payments      Payment[]
+  subscriptions Subscription[]
+
+  @@index([applicationId])
+  @@index([email])
+  @@index([phone])
+  @@map("customers")
+}
+
+// ---------------------------------------------------------------------------
+// ORDERS / PAYMENTS
+// ---------------------------------------------------------------------------
+
+model Order {
+  id            String      @id @default(cuid())
+  publicId      String      @unique @map("public_id") // ord_xxxxx
+  applicationId String      @map("application_id")
+  application   Application @relation(fields: [applicationId], references: [id])
+  customerId    String?     @map("customer_id")
+  customer      Customer?   @relation(fields: [customerId], references: [id])
+  amount        Int // integer minor units (paise)
+  currency      String      @default("INR")
+  description   String?
+  status        OrderStatus @default(PENDING)
+  mode          Mode        @default(TEST)
+  metadata      Json?
+  expiresAt     DateTime?   @map("expires_at")
+  createdAt     DateTime    @default(now()) @map("created_at")
+  updatedAt     DateTime    @updatedAt @map("updated_at")
+
+  payments     Payment[]
+  transactions Transaction[]
+
+  @@index([applicationId])
+  @@index([customerId])
+  @@index([status])
+  @@map("orders")
+}
+
+model Payment {
+  id            String        @id @default(cuid())
+  publicId      String        @unique @map("public_id") // pay_xxxxx
+  orderId       String        @map("order_id")
+  order         Order         @relation(fields: [orderId], references: [id])
+  applicationId String        @map("application_id")
+  application   Application   @relation(fields: [applicationId], references: [id])
+  customerId    String?       @map("customer_id")
+  customer      Customer?     @relation(fields: [customerId], references: [id])
+  amount        Int
+  currency      String        @default("INR")
+  method        PaymentMethod @default(UPI)
+  status        PaymentStatus @default(CREATED)
+  mode          Mode          @default(TEST)
+  provider      ProviderName  @default(MANUAL_UPI)
+  transactionRef String?      @map("transaction_ref") // customer-submitted UPI txn/reference id
+  upiUri        String?       @map("upi_uri")
+  qrImageUrl    String?       @map("qr_image_url")
+  expiresAt     DateTime?     @map("expires_at")
+  metadata      Json?
+  createdAt     DateTime      @default(now()) @map("created_at")
+  updatedAt     DateTime      @updatedAt @map("updated_at")
+
+  attempts     PaymentAttempt[]
+  transactions Transaction[]
+  refunds      Refund[]
+
+  @@index([orderId])
+  @@index([applicationId])
+  @@index([status])
+  @@index([transactionRef])
+  @@map("payments")
+}
+
+model PaymentAttempt {
+  id                String                @id @default(cuid())
+  paymentId         String                @map("payment_id")
+  payment           Payment               @relation(fields: [paymentId], references: [id])
+  provider          ProviderName
+  providerPaymentId String?               @map("provider_payment_id")
+  amount            Int
+  status            PaymentAttemptStatus  @default(CREATED)
+  startedAt         DateTime              @default(now()) @map("started_at")
+  completedAt       DateTime?             @map("completed_at")
+  failureReason     String?               @map("failure_reason")
+  metadata          Json?
+
+  @@index([paymentId])
+  @@map("payment_attempts")
+}
+
+model Transaction {
+  id                    String             @id @default(cuid())
+  paymentId             String?            @map("payment_id")
+  payment               Payment?           @relation(fields: [paymentId], references: [id])
+  orderId               String?            @map("order_id")
+  order                 Order?             @relation(fields: [orderId], references: [id])
+  applicationId         String             @map("application_id")
+  application           Application        @relation(fields: [applicationId], references: [id])
+  type                  TransactionType
+  amount                Int
+  currency              String             @default("INR")
+  status                TransactionStatus  @default(PENDING)
+  provider              ProviderName       @default(MANUAL_UPI)
+  providerTransactionId String?            @map("provider_transaction_id")
+  referenceId           String?            @map("reference_id")
+  createdAt             DateTime           @default(now()) @map("created_at")
+
+  @@index([applicationId])
+  @@index([paymentId])
+  @@index([orderId])
+  @@map("transactions")
+}
+
+// ---------------------------------------------------------------------------
+// SUBSCRIPTIONS
+// ---------------------------------------------------------------------------
+
+model Plan {
+  id            String               @id @default(cuid())
+  applicationId String               @map("application_id")
+  application   Application          @relation(fields: [applicationId], references: [id])
+  name          String
+  description   String?
+  amount        Int
+  currency      String               @default("INR")
+  interval      SubscriptionInterval
+  intervalCount Int                  @default(1) @map("interval_count")
+  active        Boolean              @default(true)
+  createdAt     DateTime             @default(now()) @map("created_at")
+
+  subscriptions Subscription[]
+
+  @@index([applicationId])
+  @@map("plans")
+}
+
+model Subscription {
+  id            String              @id @default(cuid())
+  applicationId String              @map("application_id")
+  application   Application         @relation(fields: [applicationId], references: [id])
+  customerId    String              @map("customer_id")
+  customer      Customer            @relation(fields: [customerId], references: [id])
+  planId        String              @map("plan_id")
+  plan          Plan                @relation(fields: [planId], references: [id])
+  status        SubscriptionStatus  @default(TRIALING)
+  startDate     DateTime?           @map("start_date")
+  endDate       DateTime?           @map("end_date")
+  cancelledAt   DateTime?           @map("cancelled_at")
+  metadata      Json?
+  createdAt     DateTime            @default(now()) @map("created_at")
+  updatedAt     DateTime            @updatedAt @map("updated_at")
+
+  @@index([applicationId])
+  @@index([customerId])
+  @@index([status])
+  @@map("subscriptions")
+}
+
+// ---------------------------------------------------------------------------
+// REFUNDS
+// ---------------------------------------------------------------------------
+
+model Refund {
+  id            String       @id @default(cuid())
+  publicId      String       @unique @map("public_id") // rfnd_xxxxx
+  paymentId     String       @map("payment_id")
+  payment       Payment      @relation(fields: [paymentId], references: [id])
+  applicationId String       @map("application_id")
+  application   Application  @relation(fields: [applicationId], references: [id])
+  amount        Int
+  currency      String       @default("INR")
+  status        RefundStatus @default(PENDING)
+  reason        String?
+  providerRef   String?      @map("provider_ref")
+  metadata      Json?
+  createdAt     DateTime     @default(now()) @map("created_at")
+  updatedAt     DateTime     @updatedAt @map("updated_at")
+
+  @@index([paymentId])
+  @@index([applicationId])
+  @@map("refunds")
+}
+
+// ---------------------------------------------------------------------------
+// WEBHOOKS
+// ---------------------------------------------------------------------------
+
+model WebhookEndpoint {
+  id            String      @id @default(cuid())
+  applicationId String      @map("application_id")
+  application   Application @relation(fields: [applicationId], references: [id])
+  url           String
+  secret        String
+  isActive      Boolean     @default(true) @map("is_active")
+  createdAt     DateTime    @default(now()) @map("created_at")
+
+  @@index([applicationId])
+  @@map("webhook_endpoints")
+}
+
+model WebhookEvent {
+  id             String             @id @default(cuid())
+  applicationId  String             @map("application_id")
+  application    Application        @relation(fields: [applicationId], references: [id])
+  eventType      String             @map("event_type")
+  payload        Json
+  status         WebhookEventStatus @default(PENDING)
+  attemptCount   Int                @default(0) @map("attempt_count")
+  lastAttemptAt  DateTime?          @map("last_attempt_at")
+  nextAttemptAt  DateTime?          @map("next_attempt_at")
+  responseStatus Int?               @map("response_status")
+  responseBody   String?            @map("response_body")
+  createdAt      DateTime           @default(now()) @map("created_at")
+
+  @@index([applicationId])
+  @@index([status])
+  @@index([nextAttemptAt])
+  @@map("webhook_events")
+}
+
+// ---------------------------------------------------------------------------
+// PROVIDERS
+// ---------------------------------------------------------------------------
+
+model Provider {
+  id          String       @id @default(cuid())
+  name        ProviderName @unique
+  isConfigured Boolean     @default(false) @map("is_configured")
+  config      Json?
+  createdAt   DateTime     @default(now()) @map("created_at")
+
+  transactions ProviderTransaction[]
+
+  @@map("providers")
+}
+
+model ProviderTransaction {
+  id          String       @id @default(cuid())
+  providerId  String       @map("provider_id")
+  provider    Provider     @relation(fields: [providerId], references: [id])
+  externalId  String?      @map("external_id")
+  rawPayload  Json?        @map("raw_payload")
+  createdAt   DateTime     @default(now()) @map("created_at")
+
+  @@index([providerId])
+  @@map("provider_transactions")
+}
+
+// ---------------------------------------------------------------------------
+// AUDIT / IDEMPOTENCY
+// ---------------------------------------------------------------------------
+
+model AuditLog {
+  id           String   @id @default(cuid())
+  actorType    String   @map("actor_type") // ADMIN | APPLICATION | SYSTEM
+  actorId      String?  @map("actor_id")
+  action       String
+  resourceType String   @map("resource_type")
+  resourceId   String?  @map("resource_id")
+  metadata     Json?
+  ipAddress    String?  @map("ip_address")
+  userAgent    String?  @map("user_agent")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  @@index([resourceType, resourceId])
+  @@index([actorType, actorId])
+  @@map("audit_logs")
+}
+
+model IdempotencyKey {
+  id            String   @id @default(cuid())
+  key           String   @unique
+  applicationId String   @map("application_id")
+  requestHash   String   @map("request_hash")
+  responseBody  Json?    @map("response_body")
+  statusCode    Int?     @map("status_code")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  @@index([applicationId])
+  @@map("idempotency_keys")
+}

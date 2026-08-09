@@ -1,0 +1,16 @@
+{
+  "name": "@devify/payment-core",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "src/index.ts",
+  "dependencies": {
+    "@devify/types": "workspace:*"
+  },
+  "devDependencies": {
+    "vitest": "^2.0.5"
+  },
+  "scripts": {
+    "test": "vitest run"
+  }
+}

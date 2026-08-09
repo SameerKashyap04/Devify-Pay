@@ -1,0 +1,16 @@
+{
+  "name": "@devify/crypto",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "src/index.ts",
+  "dependencies": {
+    "argon2": "^0.40.3"
+  },
+  "devDependencies": {
+    "vitest": "^2.0.5"
+  },
+  "scripts": {
+    "test": "vitest run"
+  }
+}

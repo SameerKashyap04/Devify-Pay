@@ -1,0 +1,26 @@
+{
+  "name": "devify-pay",
+  "private": true,
+  "version": "0.1.0",
+  "scripts": {
+    "dev:api": "pnpm --filter @devify/api dev",
+    "build": "pnpm -r build",
+    "db:generate": "pnpm --filter @devify/database prisma generate",
+    "db:migrate": "pnpm --filter @devify/database prisma migrate dev",
+    "db:deploy": "pnpm --filter @devify/database prisma migrate deploy",
+    "db:seed": "pnpm --filter @devify/database exec tsx prisma/seed.ts",
+    "db:reset": "pnpm --filter @devify/database prisma migrate reset --force",
+    "test": "pnpm -r test",
+    "test:e2e": "playwright test",
+    "lint": "pnpm -r lint"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.62.1",
+    "@types/node": "^20.14.11",
+    "tsx": "^4.16.2",
+    "typescript": "^5.5.4"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

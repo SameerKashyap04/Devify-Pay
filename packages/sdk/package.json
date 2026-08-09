@@ -1,0 +1,8 @@
+{
+  "name": "@devify/sdk",
+  "version": "0.1.0",
+  "private": false,
+  "type": "module",
+  "main": "src/index.ts",
+  "description": "Lightweight TypeScript client for the Devify Pay API. Server-side use only — never bundle a secret key into frontend/mobile code."
+}
