@@ -98,7 +98,7 @@ async function buildServer() {
     global: true,
     max: rateLimits.api.max,
     timeWindow: rateLimits.api.timeWindow,
-    keyGenerator: (req) => req.headers.authorization ?? req.ip,
+    keyGenerator: (req) => req.headers.authorization ?? req.ip ?? "127.0.0.1",
   });
 
   // Never log secrets: redact sensitive headers/fields from access logs.

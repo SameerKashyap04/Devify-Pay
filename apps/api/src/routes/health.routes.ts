@@ -3,7 +3,7 @@ import { prisma } from "@devify/database";
 import { redisConnection } from "../config/redis.js";
 
 export async function healthRoutes(app: FastifyInstance) {
-  app.get("/health", async (_req, reply) => {
+  app.get("/health", { config: { rateLimit: false } }, async (_req, reply) => {
     return reply.status(200).send({
       status: "ok",
       service: "Devify Pay",
