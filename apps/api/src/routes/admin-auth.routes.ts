@@ -27,10 +27,11 @@ export async function adminAuthRoutes(app: FastifyInstance) {
         userAgent: req.headers["user-agent"],
       });
 
+      const isProd = env.NODE_ENV === "production";
       reply.setCookie(COOKIE_NAME, token, {
         httpOnly: true,
-        secure: env.NODE_ENV === "production",
-        sameSite: "lax",
+        secure: isProd,
+        sameSite: isProd ? "none" : "lax",
         path: "/",
         maxAge: 60 * 60 * 12,
       });

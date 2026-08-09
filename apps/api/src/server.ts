@@ -51,7 +51,20 @@ async function buildServer() {
   registerErrorHandler(app);
 
   await app.register(helmet, { contentSecurityPolicy: false });
-  await app.register(cors, { origin: [env.ADMIN_URL], credentials: true });
+  await app.register(cors, {
+    origin: (origin, cb) => {
+      if (!origin) return cb(null, true);
+      if (
+        origin === env.ADMIN_URL ||
+        origin.endsWith(".vercel.app") ||
+        origin.includes("localhost")
+      ) {
+        return cb(null, true);
+      }
+      cb(null, true);
+    },
+    credentials: true,
+  });
   await app.register(cookie, { secret: env.SESSION_SECRET });
 
   // 1. Register OpenAPI Specification Collector
