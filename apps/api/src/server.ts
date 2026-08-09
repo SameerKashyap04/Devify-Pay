@@ -170,7 +170,7 @@ async function main() {
 
   try {
     await app.ready();
-    const port = Number(process.env.PORT || env.API_PORT || 4000);
+    const port = Number(process.env.PORT || env.API_PORT || 8080);
     await app.listen({ port, host: "0.0.0.0" });
     app.log.info(
       `Starting Devify Pay...\nEnvironment: ${env.NODE_ENV}\nServer listening on 0.0.0.0:${port}\nHealth endpoint: /health`
