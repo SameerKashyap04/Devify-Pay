@@ -28,7 +28,7 @@ export async function adminCustomerRoutes(app: FastifyInstance) {
     });
 
     return {
-      data: customers.map((c) => ({
+      data: customers.map((c: any) => ({
         id: c.id,
         name: c.name,
         email: c.email,

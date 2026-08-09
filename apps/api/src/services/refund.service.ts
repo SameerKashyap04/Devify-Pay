@@ -68,7 +68,7 @@ export async function recordRefundOutcome(params: {
     throw new ApiError(422, "INVALID_REFUND_STATE", `Refund is in status ${refund.status}`);
   }
 
-  const result = await prisma.$transaction(async (tx) => {
+  const result = await prisma.$transaction(async (tx: any) => {
     const updated = await tx.refund.update({
       where: { id: refund.id },
       data: { status: params.outcome, providerRef: params.providerRef },

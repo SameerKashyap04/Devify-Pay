@@ -60,7 +60,7 @@ export async function apiKeyAuth(req: FastifyRequest, _reply: FastifyReply) {
     // Fire-and-forget last-used update; don't block the request on it.
     prisma.apiKey
       .update({ where: { id: candidate.id }, data: { lastUsedAt: new Date() } })
-      .catch((err) => req.log.warn({ err }, "failed_to_update_api_key_last_used"));
+      .catch((err: any) => req.log.warn({ err }, "failed_to_update_api_key_last_used"));
 
     return;
   }
