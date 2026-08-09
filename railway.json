@@ -5,7 +5,7 @@
     "buildCommand": "pnpm --filter @devify/database prisma generate && pnpm --filter @devify/api build"
   },
   "deploy": {
-    "startCommand": "node_modules/.bin/tsx apps/api/src/server.ts",
+    "startCommand": "pnpm --filter @devify/api start",
     "healthcheckPath": "/health",
     "healthcheckTimeout": 120,
     "restartPolicyType": "ON_FAILURE",
