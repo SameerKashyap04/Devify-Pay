@@ -16,8 +16,11 @@
     ],
     "extra": {
       "eas": {
-        "projectId": "REPLACE_WITH_YOUR_EAS_PROJECT_ID"
+        "projectId": "b5d82706-03b9-4718-bf3d-2d8309e61694"
       }
+    },
+    "ios": {
+      "bundleIdentifier": "app.devify.pay.listener"
     }
   }
 }
