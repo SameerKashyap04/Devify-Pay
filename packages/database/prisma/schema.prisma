@@ -491,3 +491,14 @@ model IdempotencyKey {
   @@index([applicationId])
   @@map("idempotency_keys")
 }
+
+// Singleton merchant configuration — always only 1 row (id = "singleton")
+model SystemConfig {
+  id              String   @id @default("singleton")
+  upiVpa          String?  @map("upi_vpa")          // UPI VPA e.g. merchant@okicici
+  merchantName    String?  @map("merchant_name")    // Display name on QR
+  upiNotifySecret String?  @map("upi_notify_secret") // Secret for the Android companion app
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  @@map("system_config")
+}

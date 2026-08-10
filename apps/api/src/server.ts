@@ -24,6 +24,7 @@ import { adminApplicationRoutes } from "./routes/admin-applications.routes.js";
 import { adminDashboardRoutes } from "./routes/admin-dashboard.routes.js";
 import { adminCustomerRoutes } from "./routes/admin-customers.routes.js";
 import { adminReportRoutes } from "./routes/admin-reports.routes.js";
+import { adminSettingsRoutes } from "./routes/admin-settings.routes.js";
 
 import { startWebhookWorker } from "./workers/webhook-worker.js";
 
@@ -133,6 +134,7 @@ async function buildServer() {
       await adminScope.register(adminDashboardRoutes);
       await adminScope.register(adminCustomerRoutes);
       await adminScope.register(adminReportRoutes);
+      await adminScope.register(adminSettingsRoutes);
     },
     { prefix: "" }
   );

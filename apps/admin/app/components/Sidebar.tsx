@@ -13,6 +13,7 @@ const NAV_ITEMS = [
   { href: "/subscriptions", label: "Subscriptions" },
   { href: "/reports", label: "Reports" },
   { href: "/audit-logs", label: "Audit Logs" },
+  { href: "/settings", label: "⚙️ Settings" },
 ];
 
 export default function Sidebar() {
