@@ -25,6 +25,10 @@ export default function LoginPage() {
         setError(data?.error?.message ?? "Login failed");
         return;
       }
+      const data = await res.json();
+      if (data.token) {
+        localStorage.setItem("devify_admin_token", data.token);
+      }
       router.push("/payments");
     } finally {
       setLoading(false);

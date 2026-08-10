@@ -29,7 +29,8 @@ export function generateSessionToken() {
  * stored, and each session has a hard expiration.
  */
 export async function adminSessionAuth(req: FastifyRequest, _reply: FastifyReply) {
-  const token = req.cookies?.["devify_admin_session"];
+  const authHeader = req.headers.authorization;
+  const token = req.cookies?.["devify_admin_session"] || (authHeader?.startsWith("Bearer ") ? authHeader.substring(7) : null);
   if (!token) {
     throw new ApiError(401, "UNAUTHORIZED", "Admin session required");
   }

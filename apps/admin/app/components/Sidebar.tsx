@@ -21,6 +21,7 @@ export default function Sidebar() {
 
   async function logout() {
     await adminApiFetch("/v1/admin/auth/logout", { method: "POST" });
+    localStorage.removeItem("devify_admin_token");
     router.push("/login");
   }
 

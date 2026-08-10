@@ -36,7 +36,7 @@ export async function adminAuthRoutes(app: FastifyInstance) {
         maxAge: 60 * 60 * 12,
       });
 
-      return { admin: { id: admin.id, email: admin.email, name: admin.name } };
+      return { admin: { id: admin.id, email: admin.email, name: admin.name }, token };
     }
   );
 

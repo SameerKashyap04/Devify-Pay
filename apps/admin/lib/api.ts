@@ -8,13 +8,19 @@ const getApiUrl = () => {
 const API_URL = getApiUrl();
 
 export async function adminApiFetch(path: string, init?: RequestInit) {
+  const token = typeof window !== "undefined" ? localStorage.getItem("devify_admin_token") : null;
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    ...(init?.headers as Record<string, string> ?? {}),
+  };
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+
   const res = await fetch(`${API_URL}${path}`, {
     ...init,
     credentials: "include",
-    headers: {
-      "Content-Type": "application/json",
-      ...(init?.headers ?? {}),
-    },
+    headers,
     cache: "no-store",
   });
   return res;
