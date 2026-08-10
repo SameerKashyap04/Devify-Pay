@@ -1,8 +1,10 @@
 import type { FastifyInstance } from "fastify";
 import { getPaymentByPublicId } from "../services/payment.service.js";
 import { rateLimits } from "../config/rate-limits.js";
+import { prisma } from "@devify/database";
 
 export async function checkoutPageRoutes(app: FastifyInstance) {
+  // Main checkout page
   app.get(
     "/pay/:id",
     { config: { rateLimit: { max: rateLimits.public.max, timeWindow: rateLimits.public.timeWindow } } },
@@ -18,7 +20,24 @@ export async function checkoutPageRoutes(app: FastifyInstance) {
       reply.type("text/html").send(renderCheckout(payment));
     }
   );
+
+  // Lightweight status polling endpoint — called every 3s by the checkout page JS
+  // Adapted from FreePaymentGateway getTransactionStatus.ts
+  app.get(
+    "/pay/:id/status",
+    { config: { rateLimit: { max: 120, timeWindow: "1 minute" } } },
+    async (req, reply) => {
+      const { id } = req.params as { id: string };
+      const payment = await prisma.payment.findFirst({
+        where: { publicId: id },
+        select: { status: true, publicId: true },
+      });
+      if (!payment) return reply.status(404).send({ error: "not_found" });
+      return { status: payment.status };
+    }
+  );
 }
+
 
 function renderNotFound() {
   return `<!doctype html><html><head><title>Devify Pay</title></head>
@@ -62,8 +81,10 @@ function renderCheckout(payment: {
   .amount { font-size: 34px; font-weight:700; margin: 16px 24px 0; }
   .qr-wrap { text-align:center; padding: 20px 24px; }
   .qr-wrap img { width:220px; height:220px; border:1px solid #eee; border-radius:12px; }
+  .scan-hint { font-size:12px; color:#666; margin-top:8px; line-height:1.5; }
   .order { color:#999; font-size:12px; padding: 0 24px; }
   .timer { text-align:center; color:#c0392b; font-size:13px; margin: 8px 0 4px; }
+  .success-banner { background:#d4edda; color:#155724; border-radius:10px; padding:14px 20px; font-weight:600; font-size:15px; text-align:center; }
   .actions { padding: 16px 24px 24px; }
   button { width:100%; padding:14px; border:none; border-radius:10px; background:#111; color:#fff; font-size:15px; font-weight:600; cursor:pointer; }
   button:disabled { background:#ccc; cursor:not-allowed; }
@@ -88,10 +109,15 @@ function renderCheckout(payment: {
 
     ${
       payment.status === "PENDING" && payment.qrImageUrl
-        ? `<div class="qr-wrap"><img src="${payment.qrImageUrl}" alt="UPI QR" /></div>
+        ? `<div class="qr-wrap"><img src="${payment.qrImageUrl}" alt="UPI QR" />
+           <p class="scan-hint">Scan with Google Pay, PhonePe, or any UPI app.<br/>Do not modify the transaction note.</p></div>
            <div class="timer" id="timer"></div>`
         : `<div class="qr-wrap"><span class="status-badge status-${payment.status}">${payment.status}</span></div>`
     }
+
+    <div id="autoVerifyBanner" style="display:none;" class="qr-wrap">
+      <div class="success-banner">Payment Verified Automatically!</div>
+    </div>
 
     <div class="order">Order: ${escapeHtml(payment.order.publicId)} &middot; Payment: ${escapeHtml(payment.publicId)}</div>
 
@@ -111,7 +137,13 @@ function renderCheckout(payment: {
 
 <script>
   const expiresAt = ${expiresAtMs};
+  const paymentId = '${payment.publicId}';
   const timerEl = document.getElementById('timer');
+  const autoVerifyBanner = document.getElementById('autoVerifyBanner');
+  const confirmForm = document.getElementById('confirmForm');
+  const paidBtn = document.getElementById('paidBtn');
+  let pollInterval = null;
+
   function tick() {
     if (!timerEl) return;
     const remaining = Math.max(0, Math.floor((expiresAt - Date.now()) / 1000));
@@ -120,15 +152,42 @@ function renderCheckout(payment: {
   }
   tick(); setInterval(tick, 1000);
 
-  const paidBtn = document.getElementById('paidBtn');
-  const confirmForm = document.getElementById('confirmForm');
-  const submitBtn = document.getElementById('submitBtn');
+  // Live status polling — adapted from FreePaymentGateway BookingModal.tsx
+  // Polls every 3 seconds; stops when payment is no longer PENDING
+  function startPolling() {
+    pollInterval = setInterval(async () => {
+      try {
+        const res = await fetch('/pay/' + paymentId + '/status');
+        if (!res.ok) return;
+        const data = await res.json();
+        if (data.status === 'SUCCESS') {
+          clearInterval(pollInterval);
+          // Show auto-verified banner, hide manual form
+          if (autoVerifyBanner) autoVerifyBanner.style.display = 'block';
+          if (confirmForm) confirmForm.style.display = 'none';
+          if (paidBtn) paidBtn.style.display = 'none';
+          timerEl && (timerEl.textContent = '');
+        } else if (data.status === 'FAILED' || data.status === 'EXPIRED' || data.status === 'CANCELLED') {
+          clearInterval(pollInterval);
+          setTimeout(() => location.reload(), 1500);
+        }
+      } catch (e) {
+        // Network error — keep polling silently
+      }
+    }, 3000);
+  }
+
+  // Only poll if payment is currently PENDING
+  if ('${payment.status}' === 'PENDING') { startPolling(); }
+
   if (paidBtn) {
     paidBtn.addEventListener('click', () => {
       paidBtn.style.display = 'none';
-      confirmForm.style.display = 'block';
+      if (confirmForm) confirmForm.style.display = 'block';
     });
   }
+
+  const submitBtn = document.getElementById('submitBtn');
   if (submitBtn) {
     submitBtn.addEventListener('click', async () => {
       const txnId = document.getElementById('txnId').value.trim();

@@ -9,28 +9,35 @@ import type {
   WebhookVerificationResult,
 } from "@devify/types";
 import { env } from "../../config/env.js";
+import { prisma } from "@devify/database";
 
 /**
  * V1 provider. Generates a standard UPI deep-link URI + QR code for the
- * configured merchant VPA. Does NOT and cannot confirm payment on its own —
- * the customer submits a transaction reference, and an admin verifies it
- * through the actual bank/merchant interface before the payment is marked
- * SUCCESS. This provider never scrapes bank/UPI apps or SMS, and never
- * auto-confirms a payment.
+ * configured merchant VPA. Merchant VPA is read from the SystemConfig DB
+ * record (set via the Admin Settings page) with env-var fallback.
+ * The `tn` field is set to the raw payment publicId (e.g. "pay_abc123")
+ * so the Android companion app can extract it via regex from push notifications.
  */
 export class ManualUpiProvider implements PaymentProvider {
   name = "manual_upi" as const;
 
   async createPayment(input: CreatePaymentInput): Promise<CreatePaymentResult> {
+    // Read merchant config from DB settings page, fall back to env vars
+    const config = await prisma.systemConfig.findUnique({ where: { id: "singleton" } });
+    const upiVpa = config?.upiVpa ?? env.UPI_MERCHANT_ID;
+    const upiName = config?.merchantName ?? env.UPI_MERCHANT_NAME;
+
     const amountRupees = (input.amount / 100).toFixed(2);
-    const note = encodeURIComponent(`Devify ${input.reference}`.slice(0, 50));
+    // CRITICAL: tn = payment publicId so Android regex /pay_[a-zA-Z0-9]+/ can extract it
+    const tn = input.publicPaymentId;
 
     const upiUri =
-      `upi://pay?pa=${encodeURIComponent(env.UPI_MERCHANT_ID)}` +
-      `&pn=${encodeURIComponent(env.UPI_MERCHANT_NAME)}` +
+      `upi://pay?pa=${encodeURIComponent(upiVpa)}` +
+      `&pn=${encodeURIComponent(upiName)}` +
       `&am=${amountRupees}` +
       `&cu=${input.currency}` +
-      `&tn=${note}`;
+      `&tn=${encodeURIComponent(tn)}` +
+      `&tr=${encodeURIComponent(tn)}`;
 
     const qrDataUrl = await QRCode.toDataURL(upiUri, { margin: 1, width: 320 });
 

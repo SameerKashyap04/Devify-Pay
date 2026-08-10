@@ -25,6 +25,7 @@ import { adminDashboardRoutes } from "./routes/admin-dashboard.routes.js";
 import { adminCustomerRoutes } from "./routes/admin-customers.routes.js";
 import { adminReportRoutes } from "./routes/admin-reports.routes.js";
 import { adminSettingsRoutes } from "./routes/admin-settings.routes.js";
+import { upiNotifyRoutes } from "./routes/upi-notify.routes.js";
 
 import { startWebhookWorker } from "./workers/webhook-worker.js";
 
@@ -107,11 +108,12 @@ async function buildServer() {
     req.log = req.log.child({ requestId: (req as any).requestId });
   });
 
-  // 2. Register All Core Routes
+  // 2. Register all routes
   await app.register(healthRoutes);
   await app.register(orderRoutes);
   await app.register(paymentRoutes);
   await app.register(checkoutPageRoutes);
+  await app.register(upiNotifyRoutes);
   await app.register(webhookEndpointRoutes);
   await app.register(refundRoutes);
   await app.register(subscriptionRoutes);

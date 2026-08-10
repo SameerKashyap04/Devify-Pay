@@ -1,0 +1,23 @@
+{
+  "expo": {
+    "name": "Devify Pay Listener",
+    "slug": "devify-pay-listener",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "android": {
+      "package": "app.devify.pay.listener",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/icon.png",
+        "backgroundColor": "#111111"
+      }
+    },
+    "plugins": [
+      "./notification-plugin.js"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "REPLACE_WITH_YOUR_EAS_PROJECT_ID"
+      }
+    }
+  }
+}

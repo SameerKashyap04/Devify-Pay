@@ -1,0 +1,19 @@
+{
+  "expo": {
+    "name": "Payment Listener",
+    "slug": "payment-listener",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "android": {
+      "package": "com.sreehari.paymentlistener"
+    },
+    "plugins": [
+      "./notification-plugin.js"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "762b10f3-ceb8-429c-8e98-021b7d49b2d7"
+      }
+    }
+  }
+}
