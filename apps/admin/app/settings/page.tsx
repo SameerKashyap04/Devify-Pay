@@ -157,12 +157,25 @@ export default function SettingsPage() {
                   </div>
                   <div className="flex flex-1 gap-2">
                     <input
-                      type="password"
+                      type="text"
                       value={upiNotifySecret}
                       onChange={e => setUpiNotifySecret(e.target.value)}
                       placeholder={settings?.upiNotifySecretSet ? "Enter new secret to replace..." : "Enter or generate..."}
                       className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-gray-900"
                     />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (upiNotifySecret) {
+                          navigator.clipboard.writeText(upiNotifySecret);
+                          alert("Copied to clipboard!");
+                        }
+                      }}
+                      className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-600 hover:bg-gray-50 disabled:opacity-50"
+                      disabled={!upiNotifySecret}
+                    >
+                      Copy
+                    </button>
                     <button
                       type="button"
                       onClick={generateSecret}
