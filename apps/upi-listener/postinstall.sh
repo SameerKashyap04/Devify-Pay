@@ -12,7 +12,8 @@ if [ -d "$TARGET_DIR" ] && [ -d "$PATCH_SRC" ]; then
   cp -f "$PATCH_SRC/RNAndroidNotificationListener.java" "$TARGET_DIR/RNAndroidNotificationListener.java"
   cp -f "$PATCH_SRC/ServiceWatchdogReceiver.java" "$TARGET_DIR/ServiceWatchdogReceiver.java"
   cp -f "$PATCH_SRC/BootUpReceiver.java" "$TARGET_DIR/BootUpReceiver.java"
-  echo "[devify-patch] Done — 4 files patched."
+  cp -f "$PATCH_SRC/RNAndroidNotificationListenerModule.java" "$TARGET_DIR/RNAndroidNotificationListenerModule.java"
+  echo "[devify-patch] Done — 5 files patched."
 else
   echo "[devify-patch] Skipped — target dir not found yet."
 fi

@@ -97,6 +97,24 @@ export default function App() {
     setTimeout(() => setSaved(false), 2000);
   };
 
+  const [restarting, setRestarting] = useState<boolean>(false);
+
+  const handleRestartService = async () => {
+    setRestarting(true);
+    try {
+      if (Platform.OS === 'android' && (RNAndroidNotificationListener as any).restartService) {
+        await (RNAndroidNotificationListener as any).restartService();
+        Alert.alert('Success', 'Background listener service restarted & OS re-bound successfully!');
+      } else {
+        Alert.alert('Notice', 'Restart triggered.');
+      }
+    } catch (e) {
+      Alert.alert('Error', 'Restart failed: ' + e);
+    } finally {
+      setRestarting(false);
+    }
+  };
+
   if (!configLoaded) return null;
 
   return (
@@ -117,9 +135,19 @@ export default function App() {
               {hasPermission ? 'ACTIVE — Listening for payments' : 'DISABLED — Permission required'}
             </Text>
           </View>
-          {!hasPermission && (
+          {!hasPermission ? (
             <TouchableOpacity style={styles.btn} onPress={handleRequestPermission}>
               <Text style={styles.btnText}>Grant Notification Access</Text>
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity
+              style={[styles.btn, styles.btnRestart]}
+              onPress={handleRestartService}
+              disabled={restarting}
+            >
+              <Text style={styles.btnRestartText}>
+                {restarting ? 'Restarting Service...' : '🔄 Restart Background Listener'}
+              </Text>
             </TouchableOpacity>
           )}
         </View>
@@ -193,6 +221,8 @@ const styles = StyleSheet.create({
   btn: { backgroundColor: '#fff', paddingVertical: 12, paddingHorizontal: 20, borderRadius: 8, alignItems: 'center', marginTop: 14 },
   btnSuccess: { backgroundColor: '#4CAF50' },
   btnText: { color: '#000', fontSize: 14, fontWeight: '600' },
+  btnRestart: { backgroundColor: '#222', borderWidth: 1, borderColor: '#444', marginTop: 12 },
+  btnRestartText: { color: '#4CAF50', fontSize: 13, fontWeight: '600' },
   instruction: { fontSize: 13, color: '#777', marginBottom: 8, lineHeight: 18 },
   instructionNote: { fontSize: 12, color: '#f5a623', marginTop: 6, lineHeight: 17 },
 });
