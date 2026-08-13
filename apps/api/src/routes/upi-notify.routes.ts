@@ -36,13 +36,13 @@ export async function upiNotifyRoutes(app: FastifyInstance) {
     },
     async (req, reply) => {
       // --- 1. Authenticate via shared secret ---
-      const providedSecret = req.headers["x-upi-secret"] as string | undefined;
+      const providedSecret = (req.headers["x-upi-secret"] as string | undefined)?.trim();
       if (!providedSecret) {
         return reply.status(401).send({ error: { message: "Missing x-upi-secret header" } });
       }
 
       const config = await prisma.systemConfig.findUnique({ where: { id: "singleton" } });
-      const storedSecret = config?.upiNotifySecret;
+      const storedSecret = config?.upiNotifySecret?.trim();
 
       if (!storedSecret || providedSecret !== storedSecret) {
         return reply.status(401).send({ error: { message: "Invalid UPI notify secret" } });
@@ -72,23 +72,23 @@ export async function upiNotifyRoutes(app: FastifyInstance) {
       if (paymentPublicId) {
         // Strategy 1: Direct pay_ID lookup (Google Pay)
         payment = await prisma.payment.findFirst({
-          where: { publicId: paymentPublicId, status: "PENDING" },
+          where: { publicId: paymentPublicId, status: { in: ["PENDING", "PENDING_VERIFICATION"] } },
           include: { order: true },
         });
 
         if (!payment) {
-          app.log.info({ paymentPublicId }, "upi-notify: payment not found or not PENDING");
+          app.log.info({ paymentPublicId }, "upi-notify: payment not found or already verified");
           return reply.status(200).send({ ok: true, message: "Already processed or not found" });
         }
       } else if (body.amount_paise && body.amount_paise > 0) {
-        // Strategy 2: Amount-based lookup (Paytm / PhonePe)
-        // Find the most-recent PENDING payment matching this exact amount
+        // Strategy 2: Amount-based lookup (Paytm / PhonePe / Other apps)
+        // Find PENDING or PENDING_VERIFICATION payments matching this exact amount
         // created within the last 30 minutes (safety window)
         const windowStart = new Date(Date.now() - 30 * 60 * 1000);
 
         const candidates = await prisma.payment.findMany({
           where: {
-            status: "PENDING",
+            status: { in: ["PENDING", "PENDING_VERIFICATION"] },
             amount: body.amount_paise,
             createdAt: { gte: windowStart },
           },
