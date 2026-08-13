@@ -138,19 +138,19 @@ body{font-family:'Inter',system-ui,sans-serif;background:linear-gradient(135deg,
     <div class="upi-apps-label">Tap to open &amp; pay directly</div>
     <div class="upi-apps-grid">
       <a class="upi-app-btn" href="#" onclick="openUpiApp('gpay',event)">
-        <img class="upi-app-icon" src="https://upload.wikimedia.org/wikipedia/commons/thumb/f/f2/Google_Pay_Logo.svg/512px-Google_Pay_Logo.svg.png" alt="GPay"/>
+        <svg class="upi-app-icon" viewBox="0 0 36 36" fill="none"><rect width="36" height="36" rx="10" fill="#f8fafc" stroke="#e2e8f0" stroke-width="1.5"/><path d="M17.5 13.5v3.1h4.4c-.2 1.1-1.3 3.1-4.4 3.1-2.7 0-4.8-2.2-4.8-4.9s2.1-4.9 4.8-4.9c1.5 0 2.5.6 3.1 1.2l2.4-2.4C21.5 7.1 19.7 6.3 17.5 6.3 11.7 6.3 7 11 7 16.8s4.7 10.5 10.5 10.5c6.1 0 10.1-4.3 10.1-10.3 0-.7-.1-1.2-.2-1.7H17.5z" fill="#4285F4"/></svg>
         <span class="upi-app-name">Google Pay</span>
       </a>
       <a class="upi-app-btn" href="#" onclick="openUpiApp('phonepe',event)">
-        <img class="upi-app-icon" src="https://upload.wikimedia.org/wikipedia/commons/thumb/5/5f/PhonePe_Logo.svg/512px-PhonePe_Logo.svg.png" alt="PhonePe"/>
+        <svg class="upi-app-icon" viewBox="0 0 36 36"><rect width="36" height="36" rx="10" fill="#5f259f"/><text x="50%" y="58%" dominant-baseline="middle" text-anchor="middle" font-size="19" font-weight="800" fill="white" font-family="Inter,sans-serif">पे</text></svg>
         <span class="upi-app-name">PhonePe</span>
       </a>
       <a class="upi-app-btn" href="#" onclick="openUpiApp('paytm',event)">
-        <img class="upi-app-icon" src="https://upload.wikimedia.org/wikipedia/commons/thumb/2/24/Paytm_Logo_%28standalone%29.svg/512px-Paytm_Logo_%28standalone%29.svg.png" alt="Paytm"/>
+        <svg class="upi-app-icon" viewBox="0 0 36 36"><rect width="36" height="36" rx="10" fill="#002e6e"/><text x="50%" y="56%" dominant-baseline="middle" text-anchor="middle" font-size="11" font-weight="900" fill="#00baf2" font-family="Inter,sans-serif">Paytm</text></svg>
         <span class="upi-app-name">Paytm</span>
       </a>
       <a class="upi-app-btn" href="#" onclick="openUpiApp('bhim',event)">
-        <img class="upi-app-icon" src="https://upload.wikimedia.org/wikipedia/en/thumb/6/6f/BHIM_logo_%28vector%29.svg/512px-BHIM_logo_%28vector%29.svg.png" alt="BHIM"/>
+        <svg class="upi-app-icon" viewBox="0 0 36 36"><rect width="36" height="36" rx="10" fill="#0b2f6b"/><text x="50%" y="56%" dominant-baseline="middle" text-anchor="middle" font-size="10" font-weight="900" fill="#f97316" font-family="Inter,sans-serif">BHIM</text></svg>
         <span class="upi-app-name">BHIM</span>
       </a>
       <a class="upi-app-btn" href="#" onclick="openUpiApp('supermoney',event)">
