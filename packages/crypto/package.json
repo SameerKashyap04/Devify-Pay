@@ -6,6 +6,7 @@
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "dependencies": {
+    "@types/node": "^20.0.0",
     "argon2": "^0.40.3",
     "typescript": "^5.5.4"
   },
