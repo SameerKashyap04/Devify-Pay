@@ -36,13 +36,13 @@ export async function upiNotifyRoutes(app: FastifyInstance) {
     },
     async (req, reply) => {
       // --- 1. Authenticate via shared secret ---
-      const providedSecret = (req.headers["x-upi-secret"] as string | undefined)?.trim();
+      const providedSecret = req.headers["x-upi-secret"] as string | undefined;
       if (!providedSecret) {
         return reply.status(401).send({ error: { message: "Missing x-upi-secret header" } });
       }
 
       const config = await prisma.systemConfig.findUnique({ where: { id: "singleton" } });
-      const storedSecret = config?.upiNotifySecret?.trim();
+      const storedSecret = config?.upiNotifySecret;
 
       if (!storedSecret || providedSecret !== storedSecret) {
         return reply.status(401).send({ error: { message: "Invalid UPI notify secret" } });
@@ -72,25 +72,24 @@ export async function upiNotifyRoutes(app: FastifyInstance) {
       if (paymentPublicId) {
         // Strategy 1: Direct pay_ID lookup (Google Pay)
         payment = await prisma.payment.findFirst({
-          where: { publicId: paymentPublicId, status: { in: ["PENDING", "PENDING_VERIFICATION"] } },
+          where: { publicId: paymentPublicId, status: "PENDING" },
           include: { order: true },
         });
 
         if (!payment) {
-          app.log.info({ paymentPublicId }, "upi-notify: payment not found or already verified");
+          app.log.info({ paymentPublicId }, "upi-notify: payment not found or not PENDING");
           return reply.status(200).send({ ok: true, message: "Already processed or not found" });
         }
       } else if (body.amount_paise && body.amount_paise > 0) {
-        // Strategy 2: Amount-based lookup (Paytm / PhonePe / BHIM)
-        // Match the most recent non-expired PENDING payment for this amount
-        const now = new Date();
+        // Strategy 2: Amount-based lookup (Paytm / PhonePe)
+        // Find the most-recent PENDING payment matching this exact amount
+        // created within the last 30 minutes (safety window)
         const windowStart = new Date(Date.now() - 30 * 60 * 1000);
 
         const candidates = await prisma.payment.findMany({
           where: {
-            status: { in: ["PENDING", "PENDING_VERIFICATION"] },
+            status: "PENDING",
             amount: body.amount_paise,
-            expiresAt: { gte: now },
             createdAt: { gte: windowStart },
           },
           include: { order: true },
@@ -102,11 +101,22 @@ export async function upiNotifyRoutes(app: FastifyInstance) {
           return reply.status(200).send({ ok: false, message: "No matching pending payment found for this amount" });
         }
 
-        // Always match the most recent non-expired pending payment for this amount
+        if (candidates.length > 1) {
+          // Multiple PENDING payments with same amount — cannot safely auto-verify
+          app.log.warn(
+            { amount_paise: body.amount_paise, count: candidates.length },
+            "upi-notify: multiple PENDING payments for amount — skipping to avoid mis-match"
+          );
+          return reply.status(200).send({
+            ok: false,
+            message: "Multiple pending payments with this amount — please verify manually",
+          });
+        }
+
         payment = candidates[0];
         paymentPublicId = payment.publicId;
         app.log.info(
-          { paymentPublicId, amount_paise: body.amount_paise, sender: body.sender, totalCandidates: candidates.length },
+          { paymentPublicId, amount_paise: body.amount_paise, sender: body.sender },
           "upi-notify: matched payment via amount (Paytm/PhonePe)"
         );
       } else {
