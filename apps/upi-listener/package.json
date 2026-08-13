@@ -1,6 +1,6 @@
 {
   "name": "devify-pay-listener",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "main": "index.js",
   "dependencies": {
     "@react-native-async-storage/async-storage": "^2.0.0",
@@ -19,7 +19,8 @@
   "scripts": {
     "start": "expo start",
     "android": "expo run:android",
-    "build:android": "eas build --platform android --profile preview"
+    "build:android": "eas build --platform android --profile preview",
+    "postinstall": "bash postinstall.sh"
   },
   "private": true
 }
