@@ -82,7 +82,19 @@ export default function App() {
     const subscription = AppState.addEventListener('change', (nextAppState) => {
       if (nextAppState === 'active') checkServicePermission();
     });
-    return () => subscription.remove();
+
+    // Auto-restart listener every 5 minutes while active
+    const autoRestartInterval = setInterval(() => {
+      console.log('[DevifyPay] 5-min auto restart cycle triggered');
+      if (Platform.OS === 'android' && (RNAndroidNotificationListener as any).restartService) {
+        (RNAndroidNotificationListener as any).restartService().catch(() => {});
+      }
+    }, 5 * 60 * 1000);
+
+    return () => {
+      subscription.remove();
+      clearInterval(autoRestartInterval);
+    };
   }, []);
 
   const handleSave = async () => {

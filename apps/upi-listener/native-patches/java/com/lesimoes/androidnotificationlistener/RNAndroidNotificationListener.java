@@ -35,7 +35,7 @@ public class RNAndroidNotificationListener extends NotificationListenerService {
     private static final String CHANNEL_ID = "devify_pay_listener_channel";
     private static final int NOTIFICATION_ID = 88225;
     private static final int WATCHDOG_ALARM_ID = 88226;
-    private static final long WATCHDOG_INTERVAL_MS = 10 * 60 * 1000; // 10 minutes
+    private static final long WATCHDOG_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes (Doze-allowable AlarmManager)
 
     private PowerManager.WakeLock wakeLock;
 
