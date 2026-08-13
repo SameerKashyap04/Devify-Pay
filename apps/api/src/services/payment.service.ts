@@ -30,6 +30,18 @@ export async function createPayment(params: {
   const providerName: PaymentProviderName = "manual_upi";
   const provider = providerRegistry.get(providerName);
 
+  // Generate UPI URI and QR code before inserting into DB
+  const result = await provider.createPayment({
+    paymentId: publicPaymentId,
+    publicPaymentId,
+    orderId: order.publicId,
+    amount: order.amount,
+    currency: order.currency,
+    reference: order.publicId,
+    mode: params.mode,
+  });
+
+  // Single DB write directly in PENDING status
   const payment = await prisma.payment.create({
     data: {
       publicId: publicPaymentId,
@@ -39,51 +51,34 @@ export async function createPayment(params: {
       amount: order.amount,
       currency: order.currency,
       method: "UPI",
-      status: "CREATED",
+      status: "PENDING",
       mode: params.mode,
       provider: "MANUAL_UPI",
-      expiresAt: new Date(Date.now() + 15 * 60 * 1000), // 15 min QR expiry
-    },
-  });
-
-  const result = await provider.createPayment({
-    paymentId: payment.id,
-    publicPaymentId: payment.publicId,
-    orderId: order.publicId,
-    amount: payment.amount,
-    currency: payment.currency,
-    reference: order.publicId,
-    mode: params.mode,
-  });
-
-  assertValidTransition("CREATED", "PENDING");
-
-  const updated = await prisma.payment.update({
-    where: { id: payment.id },
-    data: {
-      status: "PENDING",
+      expiresAt: new Date(Date.now() + 10 * 60 * 1000), // 10 min expiry
       upiUri: result.upiUri,
       qrImageUrl: result.qrDataUrl,
     },
   });
 
-  await prisma.paymentAttempt.create({
-    data: {
-      paymentId: payment.id,
-      provider: "MANUAL_UPI",
-      providerPaymentId: result.providerPaymentId,
-      amount: payment.amount,
-      status: "PENDING",
-    },
-  });
+  // Background non-blocking record creation & webhook dispatch
+  Promise.all([
+    prisma.paymentAttempt.create({
+      data: {
+        paymentId: payment.id,
+        provider: "MANUAL_UPI",
+        providerPaymentId: result.providerPaymentId,
+        amount: payment.amount,
+        status: "PENDING",
+      },
+    }),
+    dispatchWebhookEvent({
+      applicationId: order.applicationId,
+      eventType: "payment.created",
+      payload: { payment_id: payment.publicId, order_id: order.publicId, status: payment.status },
+    }),
+  ]).catch(() => {});
 
-  await dispatchWebhookEvent({
-    applicationId: order.applicationId,
-    eventType: "payment.created",
-    payload: { payment_id: updated.publicId, order_id: order.publicId, status: updated.status },
-  });
-
-  return updated;
+  return payment;
 }
 
 export async function getPaymentByPublicId(params: { applicationId?: string; publicId: string }) {

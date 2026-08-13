@@ -18,12 +18,23 @@ import { prisma } from "@devify/database";
  * The `tn` field is set to the raw payment publicId (e.g. "pay_abc123")
  * so the Android companion app can extract it via regex from push notifications.
  */
+let systemConfigCache: { data: any; expiresAt: number } | null = null;
+
+async function getSystemConfig() {
+  if (systemConfigCache && systemConfigCache.expiresAt > Date.now()) {
+    return systemConfigCache.data;
+  }
+  const config = await prisma.systemConfig.findUnique({ where: { id: "singleton" } });
+  systemConfigCache = { data: config, expiresAt: Date.now() + 10000 };
+  return config;
+}
+
 export class ManualUpiProvider implements PaymentProvider {
   name = "manual_upi" as const;
 
   async createPayment(input: CreatePaymentInput): Promise<CreatePaymentResult> {
-    // Read merchant config from DB settings page, fall back to env vars
-    const config = await prisma.systemConfig.findUnique({ where: { id: "singleton" } });
+    // Read merchant config from DB settings page (cached 10s), fall back to env vars
+    const config = await getSystemConfig();
     const upiVpa = config?.upiVpa ?? env.UPI_MERCHANT_ID;
     const upiName = config?.merchantName ?? env.UPI_MERCHANT_NAME;
 

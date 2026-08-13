@@ -17,21 +17,21 @@ export async function orderRoutes(app: FastifyInstance) {
         body,
       });
 
-      await dispatchWebhookEvent({
+      dispatchWebhookEvent({
         applicationId: req.auth!.applicationId,
         eventType: "order.created",
         payload: { order_id: order.publicId, status: order.status },
-      });
+      }).catch(() => {});
 
       const responseBody = serializeOrder(order);
       const idem = (req as any).idempotency;
-      await storeIdempotentResponse({
+      storeIdempotentResponse({
         key: idem.key,
         requestHash: idem.requestHash,
         applicationId: req.auth!.applicationId,
         statusCode: 201,
         responseBody,
-      });
+      }).catch(() => {});
 
       reply.status(201).send(responseBody);
     }

@@ -33,13 +33,13 @@ export async function paymentRoutes(app: FastifyInstance) {
       };
 
       const idem = (req as any).idempotency;
-      await storeIdempotentResponse({
+      storeIdempotentResponse({
         key: idem.key,
         requestHash: idem.requestHash,
         applicationId: req.auth!.applicationId,
         statusCode: 201,
         responseBody,
-      });
+      }).catch(() => {});
 
       reply.status(201).send(responseBody);
     }

@@ -16,8 +16,15 @@ declare module "fastify" {
   }
 }
 
+interface CachedAuth {
+  auth: AuthContext;
+  expiresAt: number;
+}
+const authCache = new Map<string, CachedAuth>();
+
 /**
  * Authenticates requests via `Authorization: Bearer sk_live_xxx` / `sk_test_xxx`.
+ * - Uses 60s in-memory cache to bypass Argon2id verify latency (~250ms) on repeat calls
  * - Looks up the key by its stored prefix (fast, indexed)
  * - Verifies the full secret against the Argon2id hash (never stored raw)
  * - Rejects revoked keys and disabled/suspended applications
@@ -32,6 +39,13 @@ export async function apiKeyAuth(req: FastifyRequest, _reply: FastifyReply) {
   const rawKey = header.slice("Bearer ".length).trim();
   if (!rawKey.startsWith("sk_test_") && !rawKey.startsWith("sk_live_")) {
     throw new ApiError(401, "UNAUTHORIZED", "Malformed API key");
+  }
+
+  // Check 60-second in-memory cache first to avoid expensive Argon2id hash verification (~250ms)
+  const cached = authCache.get(rawKey);
+  if (cached && cached.expiresAt > Date.now()) {
+    req.auth = cached.auth;
+    return;
   }
 
   const environment = rawKey.startsWith("sk_live_") ? "LIVE" : "TEST";
@@ -50,12 +64,20 @@ export async function apiKeyAuth(req: FastifyRequest, _reply: FastifyReply) {
       throw new ApiError(403, "APPLICATION_DISABLED", "Application is not active");
     }
 
-    req.auth = {
+    const authContext: AuthContext = {
       applicationId: candidate.applicationId,
       applicationSlug: candidate.application.slug,
       environment,
       apiKeyId: candidate.id,
     };
+
+    req.auth = authContext;
+
+    // Cache valid authentication for 60 seconds
+    authCache.set(rawKey, {
+      auth: authContext,
+      expiresAt: Date.now() + 60 * 1000,
+    });
 
     // Fire-and-forget last-used update; don't block the request on it.
     prisma.apiKey
