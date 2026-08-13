@@ -167,6 +167,14 @@ function renderCheckout(payment: {
           if (confirmForm) confirmForm.style.display = 'none';
           if (paidBtn) paidBtn.style.display = 'none';
           timerEl && (timerEl.textContent = '');
+
+          const params = new URLSearchParams(window.location.search);
+          const redirectUrl = params.get('redirect_url') || params.get('return_url');
+          if (redirectUrl) {
+            const separator = redirectUrl.includes('?') ? '&' : '?';
+            const finalUrl = redirectUrl + separator + 'payment_id=' + paymentId + '&status=SUCCESS';
+            setTimeout(() => { window.location.href = finalUrl; }, 2000);
+          }
         } else if (data.status === 'FAILED' || data.status === 'EXPIRED' || data.status === 'CANCELLED') {
           clearInterval(pollInterval);
           setTimeout(() => location.reload(), 1500);
