@@ -4,7 +4,7 @@ import {
   canTransition,
   InvalidPaymentTransitionError,
   assertValidOrderTransition,
-} from "../src/state-machine.js";
+} from "../src/index.js";
 
 describe("payment state machine", () => {
   it("allows the standard success path", () => {
