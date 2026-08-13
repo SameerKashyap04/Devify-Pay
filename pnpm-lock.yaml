@@ -169,6 +169,9 @@ importers:
 
   packages/crypto:
     dependencies:
+      '@types/node':
+        specifier: ^20.0.0
+        version: 20.19.43
       argon2:
         specifier: ^0.40.3
         version: 0.40.3
@@ -234,6 +237,9 @@ importers:
       '@devify/types':
         specifier: workspace:*
         version: link:../types
+      '@types/node':
+        specifier: ^20.0.0
+        version: 20.19.43
       typescript:
         specifier: ^5.5.4
         version: 5.9.3
