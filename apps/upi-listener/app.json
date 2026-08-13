@@ -2,11 +2,11 @@
   "expo": {
     "name": "Devify Pay Listener",
     "slug": "devify-pay-listener",
-    "version": "1.0.3",
+    "version": "1.0.4",
     "orientation": "portrait",
     "android": {
       "package": "app.devify.pay.listener",
-      "versionCode": 4,
+      "versionCode": 5,
       "adaptiveIcon": {
         "foregroundImage": "./assets/icon.png",
         "backgroundColor": "#111111"

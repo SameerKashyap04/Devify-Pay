@@ -8,7 +8,8 @@
 import React, { useState, useEffect } from 'react';
 import {
   StyleSheet, Text, View, TouchableOpacity,
-  AppState, TextInput, ScrollView, Alert, KeyboardAvoidingView, Platform
+  AppState, TextInput, ScrollView, Alert, KeyboardAvoidingView, Platform,
+  NativeModules, Linking
 } from 'react-native';
 import RNAndroidNotificationListener from 'react-native-android-notification-listener';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -30,6 +31,39 @@ export default function App() {
     await RNAndroidNotificationListener.requestPermission();
   };
 
+  /**
+   * Request battery optimization exemption — critical for keeping the
+   * service alive beyond 30 minutes on most Android OEMs.
+   */
+  const requestBatteryOptimizationExemption = async () => {
+    try {
+      const alreadyAsked = await AsyncStorage.getItem('battery_opt_asked');
+      if (alreadyAsked === 'true') return;
+
+      // Use Android's built-in intent to request ignore battery optimizations
+      const intentUri = 'package:app.devify.pay.listener';
+      Alert.alert(
+        'Disable Battery Optimization',
+        'To keep the payment listener running 24/7, please disable battery optimization for this app.\n\nTap "Allow" on the next screen.',
+        [
+          {
+            text: 'Open Settings',
+            onPress: () => {
+              Linking.openSettings();
+              AsyncStorage.setItem('battery_opt_asked', 'true');
+            },
+          },
+          {
+            text: 'Later',
+            style: 'cancel',
+          },
+        ]
+      );
+    } catch (e) {
+      console.log('Battery optimization request failed:', e);
+    }
+  };
+
   // Load saved config from AsyncStorage
   useEffect(() => {
     (async () => {
@@ -41,6 +75,9 @@ export default function App() {
     })();
 
     checkServicePermission();
+    
+    // Request battery optimization exemption on first launch
+    requestBatteryOptimizationExemption();
 
     const subscription = AppState.addEventListener('change', (nextAppState) => {
       if (nextAppState === 'active') checkServicePermission();
