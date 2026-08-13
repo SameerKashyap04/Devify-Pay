@@ -74,6 +74,18 @@ module.exports = function withCustomManifest(config) {
       app.service.push(serviceObj);
     }
 
+    // 5. Ensure HeadlessJsTaskService is registered
+    const headlessIndex = app.service.findIndex(
+      (s) => s.$ && s.$['android:name'] === 'com.lesimoes.androidnotificationlistener.RNAndroidNotificationListenerHeadlessJsTaskService'
+    );
+    if (headlessIndex < 0) {
+      app.service.push({
+        $: {
+          'android:name': 'com.lesimoes.androidnotificationlistener.RNAndroidNotificationListenerHeadlessJsTaskService'
+        }
+      });
+    }
+
     return config;
   });
 };

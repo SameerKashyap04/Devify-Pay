@@ -228,5 +228,6 @@ const headlessNotificationListener = async (data) => {
     }
 };
 
+AppRegistry.registerHeadlessTask('RNAndroidNotificationListenerHeadlessJs', () => headlessNotificationListener);
 AppRegistry.registerHeadlessTask('RNAndroidNotificationListenerHeadlessTask', () => headlessNotificationListener);
 registerRootComponent(App);
