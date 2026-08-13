@@ -153,6 +153,14 @@ async function buildServer() {
   });
 
   app.get("/", async (_req, reply) => {
+    return reply.status(200).send({
+      name: "Devify Pay API",
+      status: "online",
+      documentation: "/documentation",
+    });
+  });
+
+  app.get("/doc", async (_req, reply) => {
     reply.redirect("/documentation/");
   });
 
