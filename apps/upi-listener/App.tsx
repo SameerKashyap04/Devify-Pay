@@ -125,8 +125,12 @@ export default function App() {
           <Text style={styles.cardTitle}>How it works</Text>
           <Text style={styles.instruction}>1. Grant notification access above</Text>
           <Text style={styles.instruction}>2. Enter your Railway API URL and the UPI Notify Secret from your Admin Dashboard → Settings</Text>
-          <Text style={styles.instruction}>3. Leave this app running. Keep it in battery optimization exclusion list.</Text>
-          <Text style={styles.instruction}>4. When a customer pays via UPI, Google Pay will notify this app, which will instantly verify the payment on your server.</Text>
+          <Text style={styles.instruction}>3. Leave this app running. Add it to battery optimization exclusion list.</Text>
+          <Text style={styles.instruction}>4. Supported UPI apps:</Text>
+          <Text style={styles.instruction}>   • Google Pay — matched via UPI note (pay_xxx ID)</Text>
+          <Text style={styles.instruction}>   • Paytm — matched via received amount from "Received ₹X from..." notification</Text>
+          <Text style={styles.instruction}>   • PhonePe — matched via received amount</Text>
+          <Text style={styles.instructionNote}>⚠️ For Paytm/PhonePe: if two payments with the same amount are PENDING at the same time, auto-verify is skipped and manual review is needed.</Text>
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -153,4 +157,5 @@ const styles = StyleSheet.create({
   btnSuccess: { backgroundColor: '#4CAF50' },
   btnText: { color: '#000', fontSize: 14, fontWeight: '600' },
   instruction: { fontSize: 13, color: '#777', marginBottom: 8, lineHeight: 18 },
+  instructionNote: { fontSize: 12, color: '#f5a623', marginTop: 6, lineHeight: 17 },
 });

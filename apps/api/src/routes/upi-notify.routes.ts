@@ -2,11 +2,15 @@
  * UPI Auto-Verification Endpoint
  *
  * Called by the Devify Pay Android Companion App running on the merchant's
- * phone. When Google Pay / PhonePe sends a push notification for a received
- * payment, the app extracts the payment publicId from the notification text
- * and posts it here to automatically verify the payment.
+ * phone. When Google Pay / PhonePe / Paytm sends a push notification for a
+ * received payment, the app parses the notification and posts here to
+ * automatically verify the matching payment.
  *
- * Adapted from FreePaymentGateway paymentController.ts → webhook()
+ * Two matching strategies:
+ *  1. pay_ID match  — Google Pay includes UPI txn note in notification text.
+ *  2. Amount match  — Paytm/PhonePe: extract rupee amount from notification,
+ *     find the unique PENDING payment for that amount created in last 30 min.
+ *
  * Security: protected by a shared secret (x-upi-secret header) stored in SystemConfig.
  */
 import type { FastifyInstance } from "fastify";
@@ -44,13 +48,13 @@ export async function upiNotifyRoutes(app: FastifyInstance) {
         return reply.status(401).send({ error: { message: "Invalid UPI notify secret" } });
       }
 
-      // --- 2. Extract payment ID from body ---
-      // Adapted from GpayReader index.js + FreePaymentGateway paymentController.ts
+      // --- 2. Extract payment ID or amount from body ---
       const body = req.body as {
-        tn?: string;
-        note?: string;
-        app?: string;
-        amount?: number;
+        tn?: string;           // Devify pay_ID (from GPay)
+        note?: string;         // raw notification text
+        app?: string;          // UPI app package name
+        amount_paise?: number; // amount in paise (from Paytm/PhonePe amount-based matching)
+        sender?: string;       // sender name parsed from Paytm notification
         timestamp?: number;
       };
 
@@ -62,23 +66,62 @@ export async function upiNotifyRoutes(app: FastifyInstance) {
         paymentPublicId = match ? match[0] : null;
       }
 
-      if (!paymentPublicId) {
-        app.log.warn({ body }, "upi-notify: could not extract payment ID");
-        // Return 200 always so Android app doesn't retry endlessly (GpayReader pattern)
-        return reply.status(200).send({ ok: false, message: "No payment ID found in payload" });
-      }
+      // --- 3. Resolve the payment record ---
+      let payment: any = null;
 
-      // --- 3. Atomically verify payment (idempotent) ---
-      // Adapted from FreePaymentGateway paymentController.ts → findOneAndUpdate pattern
-      // Using Prisma $transaction for atomicity — if not PENDING, no-op (idempotent)
-      const payment = await prisma.payment.findFirst({
-        where: { publicId: paymentPublicId, status: "PENDING" },
-        include: { order: true },
-      });
+      if (paymentPublicId) {
+        // Strategy 1: Direct pay_ID lookup (Google Pay)
+        payment = await prisma.payment.findFirst({
+          where: { publicId: paymentPublicId, status: "PENDING" },
+          include: { order: true },
+        });
 
-      if (!payment) {
-        app.log.info({ paymentPublicId }, "upi-notify: payment not found or not PENDING (already processed or doesn't exist)");
-        return reply.status(200).send({ ok: true, message: "Already processed or not found" });
+        if (!payment) {
+          app.log.info({ paymentPublicId }, "upi-notify: payment not found or not PENDING");
+          return reply.status(200).send({ ok: true, message: "Already processed or not found" });
+        }
+      } else if (body.amount_paise && body.amount_paise > 0) {
+        // Strategy 2: Amount-based lookup (Paytm / PhonePe)
+        // Find the most-recent PENDING payment matching this exact amount
+        // created within the last 30 minutes (safety window)
+        const windowStart = new Date(Date.now() - 30 * 60 * 1000);
+
+        const candidates = await prisma.payment.findMany({
+          where: {
+            status: "PENDING",
+            amount: body.amount_paise,
+            createdAt: { gte: windowStart },
+          },
+          include: { order: true },
+          orderBy: { createdAt: "desc" },
+        });
+
+        if (candidates.length === 0) {
+          app.log.warn({ amount_paise: body.amount_paise }, "upi-notify: no PENDING payment found for amount");
+          return reply.status(200).send({ ok: false, message: "No matching pending payment found for this amount" });
+        }
+
+        if (candidates.length > 1) {
+          // Multiple PENDING payments with same amount — cannot safely auto-verify
+          app.log.warn(
+            { amount_paise: body.amount_paise, count: candidates.length },
+            "upi-notify: multiple PENDING payments for amount — skipping to avoid mis-match"
+          );
+          return reply.status(200).send({
+            ok: false,
+            message: "Multiple pending payments with this amount — please verify manually",
+          });
+        }
+
+        payment = candidates[0];
+        paymentPublicId = payment.publicId;
+        app.log.info(
+          { paymentPublicId, amount_paise: body.amount_paise, sender: body.sender },
+          "upi-notify: matched payment via amount (Paytm/PhonePe)"
+        );
+      } else {
+        app.log.warn({ body }, "upi-notify: could not extract payment ID or amount");
+        return reply.status(200).send({ ok: false, message: "No payment ID or amount found in payload" });
       }
 
       // --- 4. Mark payment SUCCESS + order PAID in atomic DB transaction ---
@@ -121,6 +164,9 @@ export async function upiNotifyRoutes(app: FastifyInstance) {
               source: "android_companion_app",
               upi_app: body.app ?? "unknown",
               notification_text: body.note ?? null,
+              match_strategy: body.tn ? "pay_id" : "amount_match",
+              ...(body.amount_paise && { amount_paise: body.amount_paise }),
+              ...(body.sender && { sender_name: body.sender }),
             },
           },
         });

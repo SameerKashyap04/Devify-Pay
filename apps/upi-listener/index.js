@@ -10,6 +10,8 @@
  *  3. Added x-upi-secret auth header for security
  *  4. Added PhonePe and Paytm package support alongside Google Pay
  *  5. BACKEND_URL and SECRET read from AsyncStorage (set via App.tsx settings screen)
+ *  6. Added Paytm notification parser — extracts amount from
+ *     "Received ₹X from <Name>" pattern for amount-based payment matching
  */
 import { AppRegistry } from 'react-native';
 import { registerRootComponent } from 'expo';
@@ -28,6 +30,51 @@ const UPI_PACKAGES = [
 // GPay sends something like: "₹500 received from Sameer. Note: pay_xyz123"
 const PAYMENT_ID_REGEX = /pay_[a-zA-Z0-9]+/;
 
+// Paytm notification patterns:
+// Title: "Received ₹1 from Sameer Kashyap"
+// Body:  "Deposited in your NSDL Payments Bank - 4792 on 13 August at 3:47 PM"
+const PAYTM_RECEIVED_REGEX = /Received\s+[₹Rs\.]+([\d,\.]+)\s+from\s+(.+)/i;
+
+// PhonePe notification patterns:
+// "You have received Rs. 500.00 from Sameer Kashyap"
+// "Payment of Rs 500 received from ..."
+const PHONEPE_RECEIVED_REGEX = /(?:received|you have received)\s+(?:[₹Rs\.]+)?([\d,\.]+)/i;
+
+/**
+ * Parse a Paytm notification and extract amount in paise and sender name.
+ * Returns null if not a payment-received notification.
+ */
+function parsePaytmNotification(title = '', body = '') {
+    const match = title.match(PAYTM_RECEIVED_REGEX);
+    if (!match) return null;
+
+    const amountStr = match[1].replace(/,/g, ''); // remove thousand separators
+    const amountRupees = parseFloat(amountStr);
+    if (isNaN(amountRupees) || amountRupees <= 0) return null;
+
+    const amountPaise = Math.round(amountRupees * 100);
+    const senderName = match[2].trim();
+
+    return { amountPaise, senderName };
+}
+
+/**
+ * Parse a PhonePe notification and extract amount in paise.
+ * Returns null if not a payment-received notification.
+ */
+function parsePhonePeNotification(title = '', body = '') {
+    // PhonePe shows received payments in body or title
+    const fullText = `${title} ${body}`;
+    const match = fullText.match(PHONEPE_RECEIVED_REGEX);
+    if (!match) return null;
+
+    const amountStr = match[1].replace(/,/g, '');
+    const amountRupees = parseFloat(amountStr);
+    if (isNaN(amountRupees) || amountRupees <= 0) return null;
+
+    return { amountPaise: Math.round(amountRupees * 100) };
+}
+
 const headlessNotificationListener = async (data) => {
     if (!data) return;
     try {
@@ -45,30 +92,22 @@ const headlessNotificationListener = async (data) => {
         if (!notification) return;
 
         const appPackage = notification.app || notification.packageName || 'unknown';
-        const messageText = (notification.text || notification.textBody || notification.title || '').trim();
+        const notifTitle = (notification.title || '').trim();
+        const notifBody = (notification.text || notification.textBody || notification.bigText || '').trim();
+        const messageText = notifBody || notifTitle;
 
-        if (!messageText) {
+        if (!notifTitle && !notifBody) {
             console.log('[DevifyPay] Skipping empty notification from:', appPackage);
             return;
         }
 
-        console.log(`[DevifyPay] Notification from ${appPackage}: "${messageText}"`);
+        console.log(`[DevifyPay] Notification from ${appPackage}: title="${notifTitle}" body="${notifBody}"`);
 
         // Only process UPI app notifications
         if (!UPI_PACKAGES.includes(appPackage)) {
             console.log('[DevifyPay] Ignoring non-UPI app:', appPackage);
             return;
         }
-
-        // Extract Devify Pay payment ID from notification text
-        const match = messageText.match(PAYMENT_ID_REGEX);
-        if (!match) {
-            console.log('[DevifyPay] No pay_ ID found in notification — not a Devify Pay transaction');
-            return;
-        }
-
-        const paymentId = match[0];
-        console.log('[DevifyPay] Extracted payment ID:', paymentId);
 
         // Read config from AsyncStorage (set by the App.tsx settings screen)
         const backendUrl = await AsyncStorage.getItem('devify_backend_url');
@@ -79,28 +118,90 @@ const headlessNotificationListener = async (data) => {
             return;
         }
 
-        // Forward to Devify Pay API — adapted from GpayReader webhook POST
-        const response = await fetch(`${backendUrl}/v1/upi-notify`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'x-upi-secret': secret,          // Security: missing from original GpayReader
-            },
-            body: JSON.stringify({
-                tn: paymentId,
-                note: messageText,
-                app: appPackage,
-                timestamp: Date.now()
-            })
-        });
+        // ---------------------------------------------------------------
+        // Strategy 1: Extract Devify Pay payment ID from notification text
+        // Works for: Google Pay (includes UPI note/txn desc in notification)
+        // ---------------------------------------------------------------
+        const payIdMatch = (notifTitle + ' ' + notifBody).match(PAYMENT_ID_REGEX);
+        if (payIdMatch) {
+            const paymentId = payIdMatch[0];
+            console.log('[DevifyPay] Strategy 1 — Extracted pay_ ID:', paymentId);
 
-        if (response.ok) {
-            const result = await response.json();
-            console.log('[DevifyPay] Payment verified:', result.message);
-        } else {
-            const errorText = await response.text();
-            console.log('[DevifyPay] Server error:', response.status, errorText);
+            const response = await fetch(`${backendUrl}/v1/upi-notify`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'x-upi-secret': secret,
+                },
+                body: JSON.stringify({
+                    tn: paymentId,
+                    note: messageText,
+                    app: appPackage,
+                    timestamp: Date.now(),
+                })
+            });
+
+            if (response.ok) {
+                const result = await response.json();
+                console.log('[DevifyPay] Payment verified:', result.message);
+            } else {
+                const errorText = await response.text();
+                console.log('[DevifyPay] Server error:', response.status, errorText);
+            }
+            return;
         }
+
+        // ---------------------------------------------------------------
+        // Strategy 2: Amount-based matching for Paytm and PhonePe
+        // Paytm: "Received ₹1 from Sameer Kashyap"
+        //        "Deposited in your NSDL Payments Bank - 4792 on ..."
+        // PhonePe: "You have received Rs. 500.00 from ..."
+        // ---------------------------------------------------------------
+        let parsedAmount = null;
+        let parsedSender = null;
+
+        if (appPackage === 'net.one97.paytm') {
+            const parsed = parsePaytmNotification(notifTitle, notifBody);
+            if (parsed) {
+                parsedAmount = parsed.amountPaise;
+                parsedSender = parsed.senderName;
+                console.log(`[DevifyPay] Strategy 2 (Paytm) — Amount: ₹${parsedAmount / 100}, Sender: ${parsedSender}`);
+            }
+        } else if (appPackage === 'com.phonepe.app') {
+            const parsed = parsePhonePeNotification(notifTitle, notifBody);
+            if (parsed) {
+                parsedAmount = parsed.amountPaise;
+                console.log(`[DevifyPay] Strategy 2 (PhonePe) — Amount: ₹${parsedAmount / 100}`);
+            }
+        }
+
+        if (parsedAmount) {
+            const response = await fetch(`${backendUrl}/v1/upi-notify`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'x-upi-secret': secret,
+                },
+                body: JSON.stringify({
+                    amount_paise: parsedAmount,
+                    sender: parsedSender,
+                    note: `${notifTitle} | ${notifBody}`.trim(),
+                    app: appPackage,
+                    timestamp: Date.now(),
+                })
+            });
+
+            if (response.ok) {
+                const result = await response.json();
+                console.log('[DevifyPay] Payment verified (amount-match):', result.message);
+            } else {
+                const errorText = await response.text();
+                console.log('[DevifyPay] Server error:', response.status, errorText);
+            }
+            return;
+        }
+
+        console.log('[DevifyPay] Could not identify payment from notification — skipping');
 
     } catch (error) {
         console.log('[DevifyPay] Headless task error:', error);
