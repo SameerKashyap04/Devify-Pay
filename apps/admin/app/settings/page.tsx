@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { adminApiFetch } from "@/lib/api";
+import { adminApiFetch } from "../../lib/api";
 import AppShell from "../components/AppShell";
 import { useRouter } from "next/navigation";
 

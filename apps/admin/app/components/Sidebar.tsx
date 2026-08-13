@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { adminApiFetch } from "@/lib/api";
+import { adminApiFetch } from "../../lib/api";
 
 const NAV_ITEMS = [
   { href: "/dashboard", label: "Dashboard" },

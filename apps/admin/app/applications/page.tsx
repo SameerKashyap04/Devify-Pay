@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { adminApiFetch } from "@/lib/api";
+import { adminApiFetch } from "../../lib/api";
 import AppShell from "../components/AppShell";
 
 interface AppRow {

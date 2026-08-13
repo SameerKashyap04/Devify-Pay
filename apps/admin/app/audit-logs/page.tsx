@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { adminApiFetch } from "@/lib/api";
+import { adminApiFetch } from "../../lib/api";
 import AppShell from "../components/AppShell";
 
 interface AuditLogRow {
