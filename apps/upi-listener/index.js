@@ -85,6 +85,47 @@ function parseNotificationPayload(title = '', body = '') {
     return null;
 }
 
+// Memory cache to deduplicate recent notifications within a 3-minute window
+const processedNotifCache = new Map();
+
+function isDuplicateOrStale(appPackage, parsed, notificationPostTime) {
+    const now = Date.now();
+
+    // 1. If system timestamp is present and notification is older than 3 minutes, ignore
+    if (notificationPostTime && typeof notificationPostTime === 'number') {
+        const ageMs = now - notificationPostTime;
+        if (ageMs > 3 * 60 * 1000) {
+            console.log(`[DevifyPay] Stale notification ignored (Age: ${Math.round(ageMs / 1000)}s)`);
+            return true;
+        }
+    }
+
+    // 2. Build unique deduplication key per payment app + amount + sender or pay_ID
+    const key = parsed.type === 'PAY_ID'
+        ? `pay_${parsed.payId}`
+        : `amt_${appPackage}_${parsed.amountPaise}_${(parsed.senderName || 'unknown').toLowerCase().trim()}`;
+
+    const lastSeenTime = processedNotifCache.get(key);
+
+    // If seen in the last 3 minutes (180,000 ms), ignore as duplicate!
+    if (lastSeenTime && (now - lastSeenTime) < 3 * 60 * 1000) {
+        console.log(`[DevifyPay] Duplicate notification ignored for key: ${key} (Last processed: ${Math.round((now - lastSeenTime) / 1000)}s ago)`);
+        return true;
+    }
+
+    // Mark current timestamp for this key
+    processedNotifCache.set(key, now);
+
+    // Purge cache items older than 10 minutes to prevent memory leak
+    for (const [k, time] of processedNotifCache.entries()) {
+        if (now - time > 10 * 60 * 1000) {
+            processedNotifCache.delete(k);
+        }
+    }
+
+    return false;
+}
+
 const headlessNotificationListener = async (data) => {
     if (!data) return;
     try {
@@ -103,6 +144,7 @@ const headlessNotificationListener = async (data) => {
         const appPackage = (notification.app || notification.packageName || 'unknown').toLowerCase();
         const notifTitle = (notification.title || '').trim();
         const notifBody = (notification.text || notification.textBody || notification.bigText || '').trim();
+        const postTime = notification.postTime || notification.time || notification.timestamp;
 
         if (!notifTitle && !notifBody) return;
 
@@ -132,6 +174,11 @@ const headlessNotificationListener = async (data) => {
 
         if (!parsed) {
             console.log('[DevifyPay] Could not extract payment ID or amount from notification — skipping');
+            return;
+        }
+
+        // Deduplication & stale notification check
+        if (isDuplicateOrStale(appPackage, parsed, postTime)) {
             return;
         }
 

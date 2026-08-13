@@ -26,32 +26,52 @@ module.exports = function withCustomManifest(config) {
     app.$['tools:replace'] = 'android:allowBackup';
     app.$['android:usesCleartextTraffic'] = 'true';
 
-    // 3. Ensure <service> array exists for our background listener worker
+    // 3. Ensure <uses-permission> tags exist for background boot & battery optimization bypass
+    if (!androidManifest.manifest['uses-permission']) {
+      androidManifest.manifest['uses-permission'] = [];
+    }
+    const permissions = androidManifest.manifest['uses-permission'];
+    const requiredPerms = [
+      'android.permission.RECEIVE_BOOT_COMPLETED',
+      'android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS',
+      'android.permission.FOREGROUND_SERVICE',
+      'android.permission.POST_NOTIFICATIONS',
+    ];
+    requiredPerms.forEach((perm) => {
+      if (!permissions.some((p) => p.$ && p.$['android:name'] === perm)) {
+        permissions.push({ $: { 'android:name': perm } });
+      }
+    });
+
+    // 4. Ensure <service> array exists for background listener worker
     if (!app.service) {
       app.service = [];
     }
 
-    // CORRECTED: Point directly to our actual library's native java class path
-    const hasService = app.service.some(
+    const serviceIndex = app.service.findIndex(
       (s) => s.$ && s.$['android:name'] === 'com.lesimoes.androidnotificationlistener.RNAndroidNotificationListener'
     );
-    if (!hasService) {
-      app.service.push({
-        $: {
-          'android:name': 'com.lesimoes.androidnotificationlistener.RNAndroidNotificationListener',
-          'android:permission': 'android.permission.BIND_NOTIFICATION_LISTENER_SERVICE',
-          'android:exported': 'true'
-        },
-        'intent-filter': [
-          {
-            action: [
-              {
-                $: { 'android:name': 'android.service.notification.NotificationListenerService' }
-              }
-            ]
-          }
-        ]
-      });
+    const serviceObj = {
+      $: {
+        'android:name': 'com.lesimoes.androidnotificationlistener.RNAndroidNotificationListener',
+        'android:permission': 'android.permission.BIND_NOTIFICATION_LISTENER_SERVICE',
+        'android:exported': 'true',
+        'android:stopWithTask': 'false', // Keeps service running when app is swiped away/killed
+      },
+      'intent-filter': [
+        {
+          action: [
+            {
+              $: { 'android:name': 'android.service.notification.NotificationListenerService' }
+            }
+          ]
+        }
+      ]
+    };
+    if (serviceIndex >= 0) {
+      app.service[serviceIndex] = serviceObj;
+    } else {
+      app.service.push(serviceObj);
     }
 
     return config;
