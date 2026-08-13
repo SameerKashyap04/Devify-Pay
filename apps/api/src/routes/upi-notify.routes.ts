@@ -81,15 +81,16 @@ export async function upiNotifyRoutes(app: FastifyInstance) {
           return reply.status(200).send({ ok: true, message: "Already processed or not found" });
         }
       } else if (body.amount_paise && body.amount_paise > 0) {
-        // Strategy 2: Amount-based lookup (Paytm / PhonePe / Other apps)
-        // Find PENDING or PENDING_VERIFICATION payments matching this exact amount
-        // created within the last 30 minutes (safety window)
+        // Strategy 2: Amount-based lookup (Paytm / PhonePe / BHIM)
+        // Match the most recent non-expired PENDING payment for this amount
+        const now = new Date();
         const windowStart = new Date(Date.now() - 30 * 60 * 1000);
 
         const candidates = await prisma.payment.findMany({
           where: {
             status: { in: ["PENDING", "PENDING_VERIFICATION"] },
             amount: body.amount_paise,
+            expiresAt: { gte: now },
             createdAt: { gte: windowStart },
           },
           include: { order: true },
@@ -101,22 +102,11 @@ export async function upiNotifyRoutes(app: FastifyInstance) {
           return reply.status(200).send({ ok: false, message: "No matching pending payment found for this amount" });
         }
 
-        if (candidates.length > 1) {
-          // Multiple PENDING payments with same amount — cannot safely auto-verify
-          app.log.warn(
-            { amount_paise: body.amount_paise, count: candidates.length },
-            "upi-notify: multiple PENDING payments for amount — skipping to avoid mis-match"
-          );
-          return reply.status(200).send({
-            ok: false,
-            message: "Multiple pending payments with this amount — please verify manually",
-          });
-        }
-
+        // Always match the most recent non-expired pending payment for this amount
         payment = candidates[0];
         paymentPublicId = payment.publicId;
         app.log.info(
-          { paymentPublicId, amount_paise: body.amount_paise, sender: body.sender },
+          { paymentPublicId, amount_paise: body.amount_paise, sender: body.sender, totalCandidates: candidates.length },
           "upi-notify: matched payment via amount (Paytm/PhonePe)"
         );
       } else {
