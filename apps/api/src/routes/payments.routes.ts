@@ -23,9 +23,13 @@ export async function paymentRoutes(app: FastifyInstance) {
       });
 
       const { env } = await import("../config/env.js");
+      const baseUrl = env.CHECKOUT_URL.startsWith("http://") || env.CHECKOUT_URL.startsWith("https://")
+        ? env.CHECKOUT_URL
+        : `https://${env.CHECKOUT_URL}`;
+
       const responseBody = {
         ...serializePayment(payment),
-        checkout_url: `${env.CHECKOUT_URL}/${payment.publicId}`,
+        checkout_url: `${baseUrl}/${payment.publicId}`,
       };
 
       const idem = (req as any).idempotency;
