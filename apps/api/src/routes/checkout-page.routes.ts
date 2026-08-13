@@ -68,7 +68,7 @@ body{font-family:'Inter',system-ui,sans-serif;background:linear-gradient(135deg,
 .qr-wrap{text-align:center;padding:16px 24px}
 .qr-wrap img{width:210px;height:210px;border:1px solid #e5e7eb;border-radius:16px}
 .scan-hint{font-size:12px;color:#6b7280;margin-top:8px;line-height:1.6}
-.timer-row{display:flex;align-items:center;justify-content:center;gap:6px;padding:4px 24px 8px}
+.timer-row{display:flex;align-items:center;justify-content:center;gap:6px;padding:4px 24px 12px}
 .timer-dot{width:7px;height:7px;border-radius:50%;background:#ef4444;animation:pulse 1.4s ease-in-out infinite;flex-shrink:0}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
 .timer-text{font-size:13px;font-weight:600;color:#ef4444;text-align:center}
@@ -78,7 +78,7 @@ body{font-family:'Inter',system-ui,sans-serif;background:linear-gradient(135deg,
 .divider-text{font-size:11px;color:#d1d5db;font-weight:500;white-space:nowrap}
 
 /* UPI app tap buttons */
-.upi-apps-section{padding:8px 24px 4px}
+.upi-apps-section{padding:8px 24px 12px}
 .upi-apps-label{font-size:11px;font-weight:600;color:#9ca3af;text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px;text-align:center}
 .upi-apps-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
 .upi-app-btn{display:flex;flex-direction:column;align-items:center;gap:5px;padding:10px 6px;border-radius:12px;border:1.5px solid #e5e7eb;background:#fafafa;cursor:pointer;text-decoration:none;transition:border-color .15s,background .15s,transform .1s;-webkit-tap-highlight-color:transparent}
@@ -86,22 +86,6 @@ body{font-family:'Inter',system-ui,sans-serif;background:linear-gradient(135deg,
 .upi-app-btn:hover{border-color:#6366f1;background:#f5f3ff}
 .upi-app-icon{width:36px;height:36px;border-radius:10px;object-fit:contain}
 .upi-app-name{font-size:11px;font-weight:500;color:#374151}
-
-/* Enter your UPI ID section */
-.vpa-entry-section{padding:8px 24px 16px}
-.vpa-entry-label{font-size:13px;font-weight:600;color:#374151;margin-bottom:8px}
-.vpa-entry-row{display:flex;gap:8px;align-items:stretch}
-.vpa-entry-input{flex:1;padding:12px 14px;border:1.5px solid #e5e7eb;border-radius:10px;font-size:14px;font-family:inherit;outline:none;transition:border-color .15s;color:#111}
-.vpa-entry-input:focus{border-color:#6366f1;border-width:2px}
-.vpa-entry-input::placeholder{color:#d1d5db}
-.vpa-pay-btn{padding:12px 18px;border-radius:10px;border:none;background:#6366f1;color:#fff;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;transition:background .15s,transform .1s}
-.vpa-pay-btn:hover{background:#4f46e5}
-.vpa-pay-btn:active{transform:scale(0.97)}
-.vpa-pay-btn:disabled{background:#d1d5db;cursor:not-allowed}
-.vpa-hint{font-size:11px;color:#9ca3af;margin-top:6px;line-height:1.5}
-.vpa-app-result{margin-top:10px;display:none}
-.vpa-open-btn{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;padding:13px;border-radius:12px;border:none;font-size:14px;font-weight:600;cursor:pointer;text-decoration:none;transition:filter .15s,transform .1s;-webkit-tap-highlight-color:transparent}
-.vpa-open-btn:active{transform:scale(0.97)}
 
 /* Bottom action area (hidden by default, shown after timer/help) */
 .bottom-actions{padding:0 24px 20px;display:none}
@@ -149,7 +133,7 @@ body{font-family:'Inter',system-ui,sans-serif;background:linear-gradient(135deg,
     <div class="timer-text" id="timer"></div>
   </div>
 
-  <div class="divider"><div class="divider-line"></div><div class="divider-text">OR TAP UPI APP (MOBILE)</div><div class="divider-line"></div></div>
+  <div class="divider" id="upiAppsDivider" style="display:none"><div class="divider-line"></div><div class="divider-text">OR TAP UPI APP (MOBILE)</div><div class="divider-line"></div></div>
   <div class="upi-apps-section" id="upiAppsSection" style="display:none">
     <div class="upi-apps-label">Tap to open &amp; pay directly</div>
     <div class="upi-apps-grid">
@@ -176,22 +160,6 @@ body{font-family:'Inter',system-ui,sans-serif;background:linear-gradient(135deg,
       <a class="upi-app-btn" href="#" onclick="openUpiApp('other',event)">
         <svg class="upi-app-icon" viewBox="0 0 36 36"><rect width="36" height="36" rx="10" fill="#f3f4f6"/><text x="50%" y="56%" dominant-baseline="middle" text-anchor="middle" font-size="20" fill="#6b7280">&#8943;</text></svg>
         <span class="upi-app-name">Other UPI</span>
-      </a>
-    </div>
-  </div>
-
-  <div class="divider"><div class="divider-line"></div><div class="divider-text">OR ENTER YOUR UPI ID</div><div class="divider-line"></div></div>
-  <div class="vpa-entry-section">
-    <div class="vpa-entry-label">Pay with your UPI ID</div>
-    <div class="vpa-entry-row">
-      <input class="vpa-entry-input" id="customerVpa" type="text" placeholder="yourname@upi" autocomplete="off" autocapitalize="none" spellcheck="false"/>
-      <button class="vpa-pay-btn" id="vpaPayBtn" type="button">Pay Now</button>
-    </div>
-    <div class="vpa-hint">We'll open your UPI app with the payment pre-filled</div>
-    <div class="vpa-app-result" id="vpaAppResult">
-      <a class="vpa-open-btn" id="vpaOpenBtn" href="#" target="_blank">
-        <span id="vpaAppIcon" style="font-size:20px"></span>
-        <span id="vpaAppLabel">Open &amp; Pay</span>
       </a>
     </div>
   </div>
@@ -227,7 +195,11 @@ var pollInterval=null,timerExpiredFlag=false;
 // ─── Mobile detection → show UPI app buttons only on mobile/tablet ─────────
 var isMobile=/Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
 var appsSection=document.getElementById('upiAppsSection');
-if(isMobile&&appsSection)appsSection.style.display='block';
+var appsDivider=document.getElementById('upiAppsDivider');
+if(isMobile&&appsSection){
+  appsSection.style.display='block';
+  if(appsDivider)appsDivider.style.display='flex';
+}
 
 // ─── UPI deep link helper ──────────────────────────────────────────────────
 function openUpiApp(app,evt){
@@ -237,69 +209,6 @@ function openUpiApp(app,evt){
   window.location.href=schemes[app]||upiUri;
   var stores={gpay:'https://play.google.com/store/apps/details?id=com.google.android.apps.nbu.paisa.user',phonepe:'https://play.google.com/store/apps/details?id=com.phonepe.app',paytm:'https://play.google.com/store/apps/details?id=net.one97.paytm',bhim:'https://play.google.com/store/apps/details?id=in.org.npci.upiapp',supermoney:'https://play.google.com/store/apps/details?id=money.super.payments'};
   if(stores[app])setTimeout(function(){window.open(stores[app],'_blank');},1500);
-}
-
-// ─── Customer VPA → detect app and build deep link ────────────────────────
-// Maps UPI handle suffixes to app info
-var VPA_APP_MAP=[
-  {handles:['okicici','okaxis','okhdfc','oksbi','okhdfcbank'],app:'gpay',label:'Open in Google Pay',icon:'https://upload.wikimedia.org/wikipedia/commons/thumb/f/f2/Google_Pay_Logo.svg/512px-Google_Pay_Logo.svg.png',scheme:'gpay://upi/',bg:'#fff',color:'#111',border:'#e5e7eb'},
-  {handles:['ybl','axl','ibl'],app:'phonepe',label:'Open in PhonePe',icon:'https://upload.wikimedia.org/wikipedia/commons/thumb/5/5f/PhonePe_Logo.svg/512px-PhonePe_Logo.svg.png',scheme:'phonepe://',bg:'#5f259f',color:'#fff',border:'#5f259f'},
-  {handles:['paytm'],app:'paytm',label:'Open in Paytm',icon:'https://upload.wikimedia.org/wikipedia/commons/thumb/2/24/Paytm_Logo_%28standalone%29.svg/512px-Paytm_Logo_%28standalone%29.svg.png',scheme:'paytmmp://',bg:'#00baf2',color:'#fff',border:'#00baf2'},
-  {handles:['upi','rbl','sbi','boi','cnrb','icici','idbi','kotak','hdfcbank','axisbank'],app:'bhim',label:'Open in BHIM',icon:'https://upload.wikimedia.org/wikipedia/en/thumb/6/6f/BHIM_logo_%28vector%29.svg/512px-BHIM_logo_%28vector%29.svg.png',scheme:'bhim://',bg:'#0b2f6b',color:'#fff',border:'#0b2f6b'}
-];
-
-function detectAppFromVpa(vpa){
-  var handle=(vpa.split('@')[1]||'').toLowerCase();
-  for(var i=0;i<VPA_APP_MAP.length;i++){
-    var entry=VPA_APP_MAP[i];
-    for(var j=0;j<entry.handles.length;j++){
-      if(handle===entry.handles[j])return entry;
-    }
-  }
-  return null; // unknown — open generic
-}
-
-function buildDeepLink(customerVpa,appEntry){
-  if(!upiUri)return null;
-  // Replace the pn= (payee name) and keep all other params the same
-  // The UPI spec: upi://pay?pa=MERCHANT_VPA&pn=...&am=...&cu=INR&tn=...
-  var base=appEntry?upiUri.replace('upi://',appEntry.scheme):upiUri;
-  return base;
-}
-
-var vpaPayBtn=document.getElementById('vpaPayBtn');
-var vpaOpenBtn=document.getElementById('vpaOpenBtn');
-var vpaAppResult=document.getElementById('vpaAppResult');
-
-if(vpaPayBtn){
-  vpaPayBtn.addEventListener('click',function(){
-    var vpa=document.getElementById('customerVpa').value.trim().toLowerCase();
-    if(!vpa||!vpa.includes('@')){alert('Please enter a valid UPI ID (e.g. name@upi)');return;}
-    var appEntry=detectAppFromVpa(vpa);
-    var deepLink=buildDeepLink(vpa,appEntry);
-    if(!deepLink){alert('Could not build payment link. Please scan the QR code instead.');return;}
-    var openBtn=document.getElementById('vpaOpenBtn');
-    var iconEl=document.getElementById('vpaAppIcon');
-    var labelEl=document.getElementById('vpaAppLabel');
-    if(appEntry){
-      openBtn.href=deepLink;
-      openBtn.style.background=appEntry.bg;
-      openBtn.style.color=appEntry.color;
-      openBtn.style.border='2px solid '+appEntry.border;
-      iconEl.innerHTML='<img src="'+appEntry.icon+'" style="width:22px;height:22px;object-fit:contain;border-radius:6px"/>';
-      labelEl.textContent=appEntry.label;
-    }else{
-      openBtn.href=deepLink;
-      openBtn.style.background='#111';
-      openBtn.style.color='#fff';
-      openBtn.style.border='2px solid #111';
-      iconEl.innerHTML='&#128241;';
-      labelEl.textContent='Open UPI App & Pay';
-    }
-    vpaAppResult.style.display='block';
-    // Auto-navigate on mobile
-    if(isMobile)window.location.href=deepLink;
-  });
 }
 
 // ─── Timer ─────────────────────────────────────────────────────────────────
