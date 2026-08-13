@@ -7,10 +7,10 @@
   "types": "dist/index.d.ts",
   "dependencies": {
     "@devify/crypto": "workspace:*",
-    "@devify/types": "workspace:*"
+    "@devify/types": "workspace:*",
+    "typescript": "^5.5.4"
   },
   "devDependencies": {
-    "typescript": "^5.5.4",
     "vitest": "^2.0.5"
   },
   "scripts": {
