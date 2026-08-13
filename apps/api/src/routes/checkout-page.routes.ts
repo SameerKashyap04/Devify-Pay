@@ -44,10 +44,7 @@ function renderCheckout(payment: {
   const rupees = (payment.amount / 100).toFixed(2);
   const expiresAtMs = payment.expiresAt ? new Date(payment.expiresAt).getTime() : Date.now() + 10 * 60 * 1000;
   const upiUriRaw = payment.upiUri ?? "";
-  const vpaMatch = upiUriRaw.match(/[?&]pa=([^&]+)/);
-  const vpa = vpaMatch ? decodeURIComponent(vpaMatch[1] ?? "") : "";
   const upiUriEsc = escapeHtml(upiUriRaw);
-  const vpaEsc = escapeHtml(vpa);
   const isPending = payment.status === "PENDING";
 
   return `<!doctype html>
@@ -79,6 +76,8 @@ body{font-family:'Inter',system-ui,sans-serif;background:linear-gradient(135deg,
 .divider{display:flex;align-items:center;gap:10px;padding:0 24px;margin:6px 0}
 .divider-line{flex:1;height:1px;background:#f0f0f4}
 .divider-text{font-size:11px;color:#d1d5db;font-weight:500;white-space:nowrap}
+
+/* UPI app tap buttons */
 .upi-apps-section{padding:8px 24px 4px}
 .upi-apps-label{font-size:11px;font-weight:600;color:#9ca3af;text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px;text-align:center}
 .upi-apps-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
@@ -87,23 +86,36 @@ body{font-family:'Inter',system-ui,sans-serif;background:linear-gradient(135deg,
 .upi-app-btn:hover{border-color:#6366f1;background:#f5f3ff}
 .upi-app-icon{width:36px;height:36px;border-radius:10px;object-fit:contain}
 .upi-app-name{font-size:11px;font-weight:500;color:#374151}
-.vpa-section{padding:8px 24px 12px}
-.vpa-row{display:flex;gap:8px;align-items:stretch}
-.vpa-input{flex:1;padding:11px 14px;border:1.5px solid #e5e7eb;border-radius:10px;font-size:13px;font-family:inherit;outline:none;background:#fafafa;color:#374151}
-.vpa-copy-btn{padding:11px 16px;border-radius:10px;border:1.5px solid #6366f1;background:#fff;color:#6366f1;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;transition:background .15s,color .15s}
-.vpa-copy-btn:hover{background:#6366f1;color:#fff}
-.vpa-hint{font-size:11px;color:#9ca3af;margin-top:5px;line-height:1.5}
-.actions{padding:12px 24px 4px}
-.paid-btn{width:100%;padding:14px;border:none;border-radius:12px;background:#111;color:#fff;font-size:15px;font-weight:600;cursor:pointer;transition:background .15s}
-.paid-btn:hover{background:#333}
-.help-link{display:block;text-align:center;font-size:12px;color:#9ca3af;cursor:pointer;padding:8px;text-decoration:underline}
-.help-link:hover{color:#6366f1}
-.confirm-form{padding:0 24px 20px}
+
+/* Enter your UPI ID section */
+.vpa-entry-section{padding:8px 24px 16px}
+.vpa-entry-label{font-size:13px;font-weight:600;color:#374151;margin-bottom:8px}
+.vpa-entry-row{display:flex;gap:8px;align-items:stretch}
+.vpa-entry-input{flex:1;padding:12px 14px;border:1.5px solid #e5e7eb;border-radius:10px;font-size:14px;font-family:inherit;outline:none;transition:border-color .15s;color:#111}
+.vpa-entry-input:focus{border-color:#6366f1;border-width:2px}
+.vpa-entry-input::placeholder{color:#d1d5db}
+.vpa-pay-btn{padding:12px 18px;border-radius:10px;border:none;background:#6366f1;color:#fff;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;transition:background .15s,transform .1s}
+.vpa-pay-btn:hover{background:#4f46e5}
+.vpa-pay-btn:active{transform:scale(0.97)}
+.vpa-pay-btn:disabled{background:#d1d5db;cursor:not-allowed}
+.vpa-hint{font-size:11px;color:#9ca3af;margin-top:6px;line-height:1.5}
+.vpa-app-result{margin-top:10px;display:none}
+.vpa-open-btn{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;padding:13px;border-radius:12px;border:none;font-size:14px;font-weight:600;cursor:pointer;text-decoration:none;transition:filter .15s,transform .1s;-webkit-tap-highlight-color:transparent}
+.vpa-open-btn:active{transform:scale(0.97)}
+
+/* Bottom action area (hidden by default, shown after timer/help) */
+.bottom-actions{padding:0 24px 20px;display:none}
+.bottom-actions-title{font-size:13px;font-weight:600;color:#374151;margin-bottom:10px;padding-top:4px}
 .txn-input{width:100%;padding:12px 14px;border:1.5px solid #e5e7eb;border-radius:10px;font-size:14px;font-family:inherit;outline:none;margin-bottom:10px;transition:border-color .15s}
 .txn-input:focus{border-color:#6366f1}
-.submit-btn{width:100%;padding:14px;border:none;border-radius:12px;background:#111;color:#fff;font-size:15px;font-weight:600;cursor:pointer}
+.submit-btn{width:100%;padding:14px;border:none;border-radius:12px;background:#111;color:#fff;font-size:15px;font-weight:600;cursor:pointer;transition:background .15s}
+.submit-btn:hover{background:#333}
 .submit-btn:disabled{background:#d1d5db;cursor:not-allowed}
-.hint{font-size:12px;color:#9ca3af;margin-top:10px;line-height:1.6}
+.txn-hint{font-size:12px;color:#9ca3af;margin-top:8px;line-height:1.6}
+.help-link{display:block;text-align:center;font-size:12px;color:#9ca3af;cursor:pointer;padding:8px 0 12px;text-decoration:underline}
+.help-link:hover{color:#6366f1}
+
+/* Banners */
 .success-banner{background:linear-gradient(135deg,#d1fae5,#ecfdf5);color:#065f46;border-radius:12px;padding:16px 20px;font-weight:700;font-size:15px;text-align:center;border:1px solid #a7f3d0}
 .success-sub{font-size:12px;font-weight:400;margin-top:4px;color:#047857}
 .pending-banner{background:#eff6ff;color:#1d4ed8;border-radius:12px;padding:14px 20px;font-size:14px;text-align:center;border:1px solid #bfdbfe}
@@ -136,6 +148,7 @@ body{font-family:'Inter',system-ui,sans-serif;background:linear-gradient(135deg,
     <div class="timer-dot" id="timerDot"></div>
     <div class="timer-text" id="timer"></div>
   </div>
+
   <div class="divider"><div class="divider-line"></div><div class="divider-text">OR TAP UPI APP (MOBILE)</div><div class="divider-line"></div></div>
   <div class="upi-apps-section" id="upiAppsSection" style="display:none">
     <div class="upi-apps-label">Tap to open &amp; pay directly</div>
@@ -166,13 +179,21 @@ body{font-family:'Inter',system-ui,sans-serif;background:linear-gradient(135deg,
       </a>
     </div>
   </div>
-  <div class="divider"><div class="divider-line"></div><div class="divider-text">OR COPY UPI ID</div><div class="divider-line"></div></div>
-  <div class="vpa-section">
-    <div class="vpa-row">
-      <input class="vpa-input" id="vpaDisplay" readonly value="${vpaEsc}" placeholder="UPI ID not configured"/>
-      <button class="vpa-copy-btn" id="copyVpaBtn" type="button">Copy</button>
+
+  <div class="divider"><div class="divider-line"></div><div class="divider-text">OR ENTER YOUR UPI ID</div><div class="divider-line"></div></div>
+  <div class="vpa-entry-section">
+    <div class="vpa-entry-label">Pay with your UPI ID</div>
+    <div class="vpa-entry-row">
+      <input class="vpa-entry-input" id="customerVpa" type="text" placeholder="yourname@upi" autocomplete="off" autocapitalize="none" spellcheck="false"/>
+      <button class="vpa-pay-btn" id="vpaPayBtn" type="button">Pay Now</button>
     </div>
-    <div class="vpa-hint">Open your UPI app &#8594; Send Money &#8594; paste this UPI ID &#8594; enter exact amount &#8377;${rupees}</div>
+    <div class="vpa-hint">We'll open your UPI app with the payment pre-filled</div>
+    <div class="vpa-app-result" id="vpaAppResult">
+      <a class="vpa-open-btn" id="vpaOpenBtn" href="#" target="_blank">
+        <span id="vpaAppIcon" style="font-size:20px"></span>
+        <span id="vpaAppLabel">Open &amp; Pay</span>
+      </a>
+    </div>
   </div>
   ` : `<div class="qr-wrap"><span class="status-badge status-${payment.status}">${payment.status.replace("_"," ")}</span></div>`}
 
@@ -181,15 +202,16 @@ body{font-family:'Inter',system-ui,sans-serif;background:linear-gradient(135deg,
   </div>
 
   ${isPending ? `
-  <div class="actions"><button class="paid-btn" id="paidBtn">I HAVE PAID</button></div>
-  <div style="text-align:center;padding-bottom:4px"><span class="help-link" id="helpLink">Having trouble? Click here</span></div>
-  <div class="confirm-form" id="confirmForm" style="display:none">
+  <div style="text-align:center"><span class="help-link" id="helpLink">Having trouble? Click here</span></div>
+  <div class="bottom-actions" id="bottomActions">
+    <div style="height:1px;background:#f0f0f4;margin-bottom:16px"></div>
+    <div class="bottom-actions-title">&#128722; Already paid? Submit your reference ID</div>
     <input class="txn-input" id="txnId" placeholder="Enter UPI transaction / reference ID" maxlength="100"/>
     <button class="submit-btn" id="submitBtn">Submit for verification</button>
-    <div class="hint">Enter the UPI Transaction ID shown in your UPI app after payment. The merchant will verify it shortly.</div>
+    <div class="txn-hint">Enter the 12-digit UTR or Transaction ID shown in your UPI app after payment. The merchant will verify it shortly.</div>
   </div>
   ` : payment.status === "PENDING_VERIFICATION" ? `
-  <div class="actions"><div class="pending-banner">&#8987; Reference received. Verification in progress &mdash; you'll be notified once confirmed.</div></div>
+  <div style="padding:0 24px 20px"><div class="pending-banner">&#8987; Reference received. Verification in progress &mdash; you'll be notified once confirmed.</div></div>
   ` : ""}
 
   <div class="order-info">Order: ${escapeHtml(payment.order.publicId)} &middot; Payment: ${escapeHtml(payment.publicId)}</div>
@@ -198,16 +220,16 @@ body{font-family:'Inter',system-ui,sans-serif;background:linear-gradient(135deg,
 <script>
 var expiresAt=${expiresAtMs},paymentId='${payment.publicId}',upiUri='${upiUriEsc}';
 var timerEl=document.getElementById('timer'),timerDot=document.getElementById('timerDot');
-var autoVerifyBanner=document.getElementById('autoVerifyBanner'),confirmForm=document.getElementById('confirmForm');
-var paidBtn=document.getElementById('paidBtn'),helpLink=document.getElementById('helpLink');
+var autoVerifyBanner=document.getElementById('autoVerifyBanner');
+var helpLink=document.getElementById('helpLink'),bottomActions=document.getElementById('bottomActions');
 var pollInterval=null,timerExpiredFlag=false;
 
-// Mobile detection — show UPI app buttons only on mobile/tablet
+// ─── Mobile detection → show UPI app buttons only on mobile/tablet ─────────
 var isMobile=/Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
 var appsSection=document.getElementById('upiAppsSection');
 if(isMobile&&appsSection)appsSection.style.display='block';
 
-// UPI deep links
+// ─── UPI deep link helper ──────────────────────────────────────────────────
 function openUpiApp(app,evt){
   evt.preventDefault();
   if(!upiUri)return;
@@ -217,29 +239,95 @@ function openUpiApp(app,evt){
   if(stores[app])setTimeout(function(){window.open(stores[app],'_blank');},1500);
 }
 
-// Copy VPA
-var copyVpaBtn=document.getElementById('copyVpaBtn');
-if(copyVpaBtn)copyVpaBtn.addEventListener('click',function(){
-  var el=document.getElementById('vpaDisplay');
-  if(!el||!el.value)return;
-  if(navigator.clipboard){navigator.clipboard.writeText(el.value).then(function(){copyVpaBtn.textContent='Copied!';setTimeout(function(){copyVpaBtn.textContent='Copy';},2000);});}
-  else{el.select();document.execCommand('copy');copyVpaBtn.textContent='Copied!';setTimeout(function(){copyVpaBtn.textContent='Copy';},2000);}
-});
+// ─── Customer VPA → detect app and build deep link ────────────────────────
+// Maps UPI handle suffixes to app info
+var VPA_APP_MAP=[
+  {handles:['okicici','okaxis','okhdfc','oksbi','okhdfcbank'],app:'gpay',label:'Open in Google Pay',icon:'https://upload.wikimedia.org/wikipedia/commons/thumb/f/f2/Google_Pay_Logo.svg/512px-Google_Pay_Logo.svg.png',scheme:'gpay://upi/',bg:'#fff',color:'#111',border:'#e5e7eb'},
+  {handles:['ybl','axl','ibl'],app:'phonepe',label:'Open in PhonePe',icon:'https://upload.wikimedia.org/wikipedia/commons/thumb/5/5f/PhonePe_Logo.svg/512px-PhonePe_Logo.svg.png',scheme:'phonepe://',bg:'#5f259f',color:'#fff',border:'#5f259f'},
+  {handles:['paytm'],app:'paytm',label:'Open in Paytm',icon:'https://upload.wikimedia.org/wikipedia/commons/thumb/2/24/Paytm_Logo_%28standalone%29.svg/512px-Paytm_Logo_%28standalone%29.svg.png',scheme:'paytmmp://',bg:'#00baf2',color:'#fff',border:'#00baf2'},
+  {handles:['upi','rbl','sbi','boi','cnrb','icici','idbi','kotak','hdfcbank','axisbank'],app:'bhim',label:'Open in BHIM',icon:'https://upload.wikimedia.org/wikipedia/en/thumb/6/6f/BHIM_logo_%28vector%29.svg/512px-BHIM_logo_%28vector%29.svg.png',scheme:'bhim://',bg:'#0b2f6b',color:'#fff',border:'#0b2f6b'}
+];
 
-// Timer
+function detectAppFromVpa(vpa){
+  var handle=(vpa.split('@')[1]||'').toLowerCase();
+  for(var i=0;i<VPA_APP_MAP.length;i++){
+    var entry=VPA_APP_MAP[i];
+    for(var j=0;j<entry.handles.length;j++){
+      if(handle===entry.handles[j])return entry;
+    }
+  }
+  return null; // unknown — open generic
+}
+
+function buildDeepLink(customerVpa,appEntry){
+  if(!upiUri)return null;
+  // Replace the pn= (payee name) and keep all other params the same
+  // The UPI spec: upi://pay?pa=MERCHANT_VPA&pn=...&am=...&cu=INR&tn=...
+  var base=appEntry?upiUri.replace('upi://',appEntry.scheme):upiUri;
+  return base;
+}
+
+var vpaPayBtn=document.getElementById('vpaPayBtn');
+var vpaOpenBtn=document.getElementById('vpaOpenBtn');
+var vpaAppResult=document.getElementById('vpaAppResult');
+
+if(vpaPayBtn){
+  vpaPayBtn.addEventListener('click',function(){
+    var vpa=document.getElementById('customerVpa').value.trim().toLowerCase();
+    if(!vpa||!vpa.includes('@')){alert('Please enter a valid UPI ID (e.g. name@upi)');return;}
+    var appEntry=detectAppFromVpa(vpa);
+    var deepLink=buildDeepLink(vpa,appEntry);
+    if(!deepLink){alert('Could not build payment link. Please scan the QR code instead.');return;}
+    var openBtn=document.getElementById('vpaOpenBtn');
+    var iconEl=document.getElementById('vpaAppIcon');
+    var labelEl=document.getElementById('vpaAppLabel');
+    if(appEntry){
+      openBtn.href=deepLink;
+      openBtn.style.background=appEntry.bg;
+      openBtn.style.color=appEntry.color;
+      openBtn.style.border='2px solid '+appEntry.border;
+      iconEl.innerHTML='<img src="'+appEntry.icon+'" style="width:22px;height:22px;object-fit:contain;border-radius:6px"/>';
+      labelEl.textContent=appEntry.label;
+    }else{
+      openBtn.href=deepLink;
+      openBtn.style.background='#111';
+      openBtn.style.color='#fff';
+      openBtn.style.border='2px solid #111';
+      iconEl.innerHTML='&#128241;';
+      labelEl.textContent='Open UPI App & Pay';
+    }
+    vpaAppResult.style.display='block';
+    // Auto-navigate on mobile
+    if(isMobile)window.location.href=deepLink;
+  });
+}
+
+// ─── Timer ─────────────────────────────────────────────────────────────────
 function tick(){
   if(!timerEl)return;
   var rem=Math.max(0,Math.floor((expiresAt-Date.now())/1000)),m=Math.floor(rem/60),s=rem%60;
-  if(rem>0){timerEl.textContent='Expires in '+m+':'+String(s).padStart(2,'0');timerEl.className='timer-text';if(timerDot)timerDot.style.display='';}
-  else if(!timerExpiredFlag){timerExpiredFlag=true;timerEl.textContent='Timer expired — you can still submit your payment reference ID below';timerEl.className='timer-text timer-expired';if(timerDot)timerDot.style.display='none';showPaidForm();}
+  if(rem>0){
+    timerEl.textContent='Expires in '+m+':'+String(s).padStart(2,'0');
+    timerEl.className='timer-text';
+    if(timerDot)timerDot.style.display='';
+  }else if(!timerExpiredFlag){
+    timerExpiredFlag=true;
+    timerEl.textContent='Timer expired — you can still submit your payment reference ID below';
+    timerEl.className='timer-text timer-expired';
+    if(timerDot)timerDot.style.display='none';
+    showBottomActions();
+  }
 }
 tick();setInterval(tick,1000);
 
-function showPaidForm(){if(paidBtn)paidBtn.style.display='none';if(helpLink)helpLink.style.display='none';if(confirmForm)confirmForm.style.display='block';}
-if(paidBtn)paidBtn.addEventListener('click',showPaidForm);
-if(helpLink)helpLink.addEventListener('click',showPaidForm);
+// ─── Show bottom actions (help form) ──────────────────────────────────────
+function showBottomActions(){
+  if(helpLink)helpLink.style.display='none';
+  if(bottomActions)bottomActions.style.display='block';
+}
+if(helpLink)helpLink.addEventListener('click',showBottomActions);
 
-// Status polling
+// ─── Status polling ────────────────────────────────────────────────────────
 function startPolling(){
   pollInterval=setInterval(async function(){
     try{
@@ -249,21 +337,22 @@ function startPolling(){
       if(data.status==='SUCCESS'){
         clearInterval(pollInterval);
         if(autoVerifyBanner)autoVerifyBanner.style.display='block';
-        if(confirmForm)confirmForm.style.display='none';
-        if(paidBtn)paidBtn.style.display='none';
+        if(bottomActions)bottomActions.style.display='none';
         if(helpLink)helpLink.style.display='none';
         if(timerEl)timerEl.textContent='';
         if(timerDot)timerDot.style.display='none';
         var params=new URLSearchParams(window.location.search);
         var redirectUrl=params.get('redirect_url')||params.get('return_url');
         if(redirectUrl){var sep=redirectUrl.includes('?')?'&':'?';setTimeout(function(){window.location.href=redirectUrl+sep+'payment_id='+paymentId+'&status=SUCCESS';},2000);}
-      }else if(data.status==='FAILED'||data.status==='EXPIRED'||data.status==='CANCELLED'){clearInterval(pollInterval);setTimeout(function(){location.reload();},1500);}
+      }else if(data.status==='FAILED'||data.status==='EXPIRED'||data.status==='CANCELLED'){
+        clearInterval(pollInterval);setTimeout(function(){location.reload();},1500);
+      }
     }catch(e){}
   },3000);
 }
 if('${payment.status}'==='PENDING')startPolling();
 
-// Submit manual txn ID
+// ─── Submit manual txn ID ─────────────────────────────────────────────────
 var submitBtn=document.getElementById('submitBtn');
 if(submitBtn)submitBtn.addEventListener('click',async function(){
   var txnId=document.getElementById('txnId').value.trim();
