@@ -7,18 +7,24 @@ import android.os.Build;
 import android.util.Log;
 
 /**
- * Watchdog BroadcastReceiver: triggered every 10 minutes by AlarmManager.
- * Re-starts the NotificationListenerService foreground notification if the
- * service was killed or lost its foreground state.
+ * Watchdog BroadcastReceiver for Android 9+ Doze Mode.
+ * Fired periodically by AlarmManager (using setAndAllowWhileIdle).
  * 
- * Also triggered after device boot (via BootUpReceiver → this receiver).
+ * 1. Reschedules the next 10-min Doze alarm.
+ * 2. Starts foreground service if killed.
+ * 3. Ensures NotificationListener is active via ComponentName toggle.
  */
 public class ServiceWatchdogReceiver extends BroadcastReceiver {
     private static final String TAG = "DevifyPayWatchdog";
 
     @Override
     public void onReceive(Context context, Intent intent) {
-        Log.d(TAG, "Watchdog alarm fired — ensuring notification listener service is alive");
+        Log.d(TAG, "Watchdog alarm fired on Android — checking service state");
+
+        // 1. Reschedule next watchdog alarm
+        RNAndroidNotificationListener.scheduleWatchdogAlarm(context);
+
+        // 2. Start foreground service if dead
         try {
             Intent serviceIntent = new Intent(context, RNAndroidNotificationListener.class);
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -27,7 +33,10 @@ public class ServiceWatchdogReceiver extends BroadcastReceiver {
                 context.startService(serviceIntent);
             }
         } catch (Exception e) {
-            Log.e(TAG, "Failed to restart service: " + e.getMessage());
+            Log.e(TAG, "Watchdog startForegroundService error: " + e.getMessage());
         }
+
+        // 3. Force re-bind NotificationListenerService to prevent Android 9 Doze unbinding
+        RNAndroidNotificationListener.ensureListenerConnected(context);
     }
 }
