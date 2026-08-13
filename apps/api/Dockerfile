@@ -7,7 +7,7 @@ COPY packages ./packages
 COPY apps/api ./apps/api
 
 RUN pnpm install --frozen-lockfile || pnpm install
-RUN pnpm --filter @devify/database prisma generate
+RUN pnpm --filter @devify/database run prisma:generate
 RUN pnpm --filter @devify/api build
 
 EXPOSE 4000
