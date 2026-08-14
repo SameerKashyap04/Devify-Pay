@@ -48,7 +48,8 @@ export class ManualUpiProvider implements PaymentProvider {
       `&am=${amountRupees}` +
       `&cu=${input.currency}` +
       `&tn=${encodeURIComponent(tn)}` +
-      `&tr=${encodeURIComponent(tn)}`;
+      `&tr=${encodeURIComponent(tn)}` +
+      `&mode=02&mc=0000&purpose=00`;
 
     const qrDataUrl = await QRCode.toDataURL(upiUri, { margin: 1, width: 320 });
 

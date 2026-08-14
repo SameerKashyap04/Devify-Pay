@@ -201,14 +201,116 @@ if(isMobile&&appsSection){
   if(appsDivider)appsDivider.style.display='flex';
 }
 
-// ─── UPI deep link helper ──────────────────────────────────────────────────
+// ─── Lifecycle-Aware Fallback Timer & UPI App Launcher ───────────────────────
+var fallbackTimer=null;
+var appLaunched=false;
+
+function cancelFallbackTimer(){
+  appLaunched=true;
+  if(fallbackTimer){
+    clearTimeout(fallbackTimer);
+    fallbackTimer=null;
+  }
+}
+
+window.addEventListener('pagehide',cancelFallbackTimer);
+window.addEventListener('blur',cancelFallbackTimer);
+document.addEventListener('visibilitychange',function(){
+  if(document.hidden||document.visibilityState==='hidden'){
+    cancelFallbackTimer();
+  }
+});
+
 function openUpiApp(app,evt){
-  evt.preventDefault();
+  if(evt)evt.preventDefault();
   if(!upiUri)return;
-  var schemes={gpay:upiUri.replace('upi://','gpay://upi/'),phonepe:upiUri.replace('upi://','phonepe://'),paytm:upiUri.replace('upi://','paytmmp://'),bhim:upiUri.replace('upi://','bhim://'),supermoney:upiUri.replace('upi://','supermoney://'),other:upiUri};
-  window.location.href=schemes[app]||upiUri;
-  var stores={gpay:'https://play.google.com/store/apps/details?id=com.google.android.apps.nbu.paisa.user',phonepe:'https://play.google.com/store/apps/details?id=com.phonepe.app',paytm:'https://play.google.com/store/apps/details?id=net.one97.paytm',bhim:'https://play.google.com/store/apps/details?id=in.org.npci.upiapp',supermoney:'https://play.google.com/store/apps/details?id=money.super.payments'};
-  if(stores[app])setTimeout(function(){window.open(stores[app],'_blank');},1500);
+
+  appLaunched=false;
+  if(fallbackTimer){
+    clearTimeout(fallbackTimer);
+    fallbackTimer=null;
+  }
+
+  var isIOS=/iPhone|iPad|iPod/i.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>0);
+  var isAndroid=/Android/i.test(navigator.userAgent);
+
+  // Extract VPA, payee name, amount, and note from upiUri
+  var rawVpa=(upiUri.match(/pa=([^&]+)/)||[])[1]||'';
+  var cleanVpa=decodeURIComponent(rawVpa);
+  var rawPn=(upiUri.match(/pn=([^&]+)/)||[])[1]||'Merchant';
+  var cleanPn=decodeURIComponent(rawPn);
+  var rawAm=(upiUri.match(/am=([^&]+)/)||[])[1]||'0.00';
+  var cleanAm=parseFloat(rawAm).toFixed(2);
+  var rawTn=(upiUri.match(/tn=([^&]+)/)||[])[1]||'';
+  var cleanTn=decodeURIComponent(rawTn);
+
+  // Build standard NPCI-compliant query payload (pa with unescaped @ for merchant detection)
+  var npciQuery='pa='+encodeURIComponent(cleanVpa).replace(/%40/g,'@')+
+                '&pn='+encodeURIComponent(cleanPn)+
+                '&am='+cleanAm+
+                '&cu=INR'+
+                '&tn='+encodeURIComponent(cleanTn)+
+                '&tr='+encodeURIComponent(cleanTn)+
+                '&mode=02&mc=0000&purpose=00';
+
+  var standardUpiUri='upi://pay?'+npciQuery;
+
+  var androidIntents={
+    gpay:'intent://pay?'+npciQuery+'#Intent;scheme=upi;package=com.google.android.apps.nbu.paisa.user;action=android.intent.action.VIEW;end;',
+    phonepe:'intent://pay?'+npciQuery+'#Intent;scheme=upi;package=com.phonepe.app;action=android.intent.action.VIEW;end;',
+    paytm:'intent://pay?'+npciQuery+'#Intent;scheme=upi;package=net.one97.paytm;action=android.intent.action.VIEW;end;',
+    bhim:'intent://pay?'+npciQuery+'#Intent;scheme=upi;package=in.org.npci.upiapp;action=android.intent.action.VIEW;end;',
+    supermoney:'intent://pay?'+npciQuery+'#Intent;scheme=upi;package=money.super.payments;action=android.intent.action.VIEW;end;'
+  };
+
+  var iosSchemes={
+    gpay:'gpay://upi/pay?'+npciQuery,
+    phonepe:'phonepe://pay?'+npciQuery,
+    paytm:'paytmmp://pay?'+npciQuery,
+    bhim:'bhim://pay?'+npciQuery,
+    supermoney:'supermoney://pay?'+npciQuery
+  };
+
+  var playStores={
+    gpay:'https://play.google.com/store/apps/details?id=com.google.android.apps.nbu.paisa.user',
+    phonepe:'https://play.google.com/store/apps/details?id=com.phonepe.app',
+    paytm:'https://play.google.com/store/apps/details?id=net.one97.paytm',
+    bhim:'https://play.google.com/store/apps/details?id=in.org.npci.upiapp',
+    supermoney:'https://play.google.com/store/apps/details?id=money.super.payments'
+  };
+
+  var appStores={
+    gpay:'https://apps.apple.com/in/app/google-pay-save-pay-send/id1193357041',
+    phonepe:'https://apps.apple.com/in/app/phonepe-payments-recharge/id1170055821',
+    paytm:'https://apps.apple.com/in/app/paytm-payments-recharge/id473924402',
+    bhim:'https://apps.apple.com/in/app/bhim-making-india-cashless/id1184178652',
+    supermoney:'https://apps.apple.com/in/app/super-money-upi-rewards/id6478956976'
+  };
+
+  var targetUrl=standardUpiUri;
+  if(app!=='other'){
+    if(isAndroid&&androidIntents[app]){
+      targetUrl=androidIntents[app];
+    }else if(isIOS&&iosSchemes[app]){
+      targetUrl=iosSchemes[app];
+    }
+  }
+
+  var startTime=Date.now();
+  window.location.href=targetUrl;
+
+  var storeUrl=isIOS?appStores[app]:playStores[app];
+  if(storeUrl&&app!=='other'){
+    fallbackTimer=setTimeout(function(){
+      // Execute store fallback ONLY if app did NOT launch and page remains active in foreground
+      if(!appLaunched&&!document.hidden&&document.visibilityState!=='hidden'){
+        var elapsed=Date.now()-startTime;
+        if(elapsed<3000){
+          window.location.href=storeUrl;
+        }
+      }
+    },2500);
+  }
 }
 
 // ─── Timer ─────────────────────────────────────────────────────────────────
