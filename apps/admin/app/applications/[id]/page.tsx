@@ -147,10 +147,36 @@ export default function ApplicationDetailPage() {
 
         {newSecret && (
           <div className="mb-6 rounded-2xl border border-amber-200 bg-amber-50 p-4">
-            <div className="text-sm font-semibold text-amber-800">
-              Save this key now — it will not be shown again.
+            <div className="flex items-center justify-between">
+              <div className="text-sm font-semibold text-amber-800">
+                Save this key now — it will not be shown again.
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  navigator.clipboard.writeText(newSecret);
+                  setCopiedSecret(true);
+                  setTimeout(() => setCopiedSecret(false), 2000);
+                }}
+                className="rounded-lg bg-amber-900 px-3 py-1.5 text-xs font-semibold text-white hover:bg-amber-800 transition-all cursor-pointer flex items-center gap-1"
+              >
+                {copiedSecret ? "✓ Copied Key!" : "📋 Copy Key"}
+              </button>
             </div>
-            <code className="mt-2 block break-all rounded-lg bg-white px-3 py-2 text-xs">{newSecret}</code>
+            <div className="mt-2 flex items-center justify-between gap-2 rounded-xl border border-amber-200 bg-white p-2">
+              <code className="block break-all font-mono text-xs font-bold text-gray-900 select-all px-2">{newSecret}</code>
+              <button
+                type="button"
+                onClick={() => {
+                  navigator.clipboard.writeText(newSecret);
+                  setCopiedSecret(true);
+                  setTimeout(() => setCopiedSecret(false), 2000);
+                }}
+                className="shrink-0 rounded-lg bg-gray-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-gray-800 cursor-pointer"
+              >
+                {copiedSecret ? "Copied!" : "Copy"}
+              </button>
+            </div>
           </div>
         )}
 
