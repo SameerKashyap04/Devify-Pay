@@ -44,10 +44,11 @@ export default function ApplicationsPage() {
     e.preventDefault();
     setError(null);
     setSaving(true);
+    const cleanSlug = slug.toLowerCase().trim().replace(/[^a-z0-9-]/g, "-");
     try {
       const res = await adminApiFetch("/v1/admin/applications", {
         method: "POST",
-        body: JSON.stringify({ name, slug, webhook_url: webhookUrl || undefined }),
+        body: JSON.stringify({ name, slug: cleanSlug, webhook_url: webhookUrl || undefined }),
       });
       if (!res.ok) {
         const data = await res.json().catch(() => null);

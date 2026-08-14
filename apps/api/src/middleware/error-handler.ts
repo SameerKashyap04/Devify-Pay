@@ -1,4 +1,5 @@
 import type { FastifyInstance, FastifyError, FastifyRequest, FastifyReply } from "fastify";
+import { ZodError } from "zod";
 import { env } from "../config/env.js";
 
 export class ApiError extends Error {
@@ -12,7 +13,7 @@ export class ApiError extends Error {
 }
 
 export function registerErrorHandler(app: FastifyInstance) {
-  app.setErrorHandler((err: FastifyError | ApiError, req: FastifyRequest, reply: FastifyReply) => {
+  app.setErrorHandler((err: FastifyError | ApiError | ZodError, req: FastifyRequest, reply: FastifyReply) => {
     const requestId = (req as any).requestId ?? "req_unknown";
 
     let statusCode = 500;
@@ -23,11 +24,16 @@ export function registerErrorHandler(app: FastifyInstance) {
       statusCode = err.statusCode;
       code = err.code;
       message = err.message;
+    } else if (err instanceof ZodError) {
+      statusCode = 400;
+      code = "INVALID_REQUEST";
+      message = err.errors.map((e) => `${e.path.join(".")}: ${e.message}`).join(", ");
     } else if ("validation" in err && err.validation) {
       statusCode = 400;
       code = "INVALID_REQUEST";
-      message = err.message;
+      message = (err as FastifyError).message;
     } else if ((err as FastifyError).statusCode) {
+
       statusCode = (err as FastifyError).statusCode!;
       code = statusCode === 429 ? "RATE_LIMITED" : "REQUEST_ERROR";
       message = err.message;
