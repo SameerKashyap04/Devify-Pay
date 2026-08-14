@@ -138,27 +138,27 @@ body{font-family:'Inter',system-ui,sans-serif;background:linear-gradient(135deg,
     <div class="upi-apps-label">Tap to open &amp; pay directly</div>
     <div class="upi-apps-grid">
       <a class="upi-app-btn" href="#" onclick="openUpiApp('gpay',event)">
-        <svg class="upi-app-icon" viewBox="0 0 36 36" fill="none"><rect width="36" height="36" rx="10" fill="#f8fafc" stroke="#e2e8f0" stroke-width="1.5"/><path d="M17.5 13.5v3.1h4.4c-.2 1.1-1.3 3.1-4.4 3.1-2.7 0-4.8-2.2-4.8-4.9s2.1-4.9 4.8-4.9c1.5 0 2.5.6 3.1 1.2l2.4-2.4C21.5 7.1 19.7 6.3 17.5 6.3 11.7 6.3 7 11 7 16.8s4.7 10.5 10.5 10.5c6.1 0 10.1-4.3 10.1-10.3 0-.7-.1-1.2-.2-1.7H17.5z" fill="#4285F4"/></svg>
+        <svg class="upi-app-icon" viewBox="0 0 36 36"><rect width="36" height="36" rx="10" fill="#ffffff" stroke="#e2e8f0" stroke-width="1.2"/><path d="M24.8 18.2c0-.6-.1-1.2-.2-1.7H18v3.2h3.8c-.2 1-.7 1.9-1.5 2.5v2.1h2.5c1.4-1.3 2.5-3.3 2.5-6.1z" fill="#4285F4"/><path d="M18 25.1c1.9 0 3.5-.6 4.7-1.7l-2.5-2.1c-.6.4-1.4.7-2.2.7-1.7 0-3.2-1.2-3.7-2.8H11.7v2.1c1.2 2.3 3.6 3.8 6.3 3.8z" fill="#34A853"/><path d="M14.3 19.2c-.1-.4-.2-.9-.2-1.4s.1-1 .2-1.4v-2.1H11.7c-.5 1-0.8 2.1-0.8 3.3s.3 2.3.8 3.3l2.6-1.7z" fill="#FBBC05"/><path d="M18 12.4c1 0 2 .4 2.7 1.1l2-2C21.5 10.4 19.9 9.8 18 9.8c-2.7 0-5.1 1.5-6.3 3.8l2.6 2.1c.5-1.6 2-2.8 3.7-2.8z" fill="#EA4335"/></svg>
         <span class="upi-app-name">Google Pay</span>
       </a>
       <a class="upi-app-btn" href="#" onclick="openUpiApp('phonepe',event)">
-        <svg class="upi-app-icon" viewBox="0 0 36 36"><rect width="36" height="36" rx="10" fill="#5f259f"/><text x="50%" y="58%" dominant-baseline="middle" text-anchor="middle" font-size="19" font-weight="800" fill="white" font-family="Inter,sans-serif">पे</text></svg>
+        <svg class="upi-app-icon" viewBox="0 0 36 36"><rect width="36" height="36" rx="10" fill="#5f259f"/><path d="M23.5 12h-4.2c.4-.7.6-1.5.6-2.4 0-2.5-2-4.6-4.5-4.6H11v17.5h3.5v-5.2h1.4l4.6 5.2h4.5l-5.6-6.3c1.7-.7 2.9-2.3 2.9-4.2H23.5zM14.5 8h1c.8 0 1.5.7 1.5 1.5S16.3 11 15.5 11h-1V8z" fill="#ffffff"/><path d="M20.5 7h4v2h-4z" fill="#ffffff"/></svg>
         <span class="upi-app-name">PhonePe</span>
       </a>
       <a class="upi-app-btn" href="#" onclick="openUpiApp('paytm',event)">
-        <svg class="upi-app-icon" viewBox="0 0 36 36"><rect width="36" height="36" rx="10" fill="#002e6e"/><text x="50%" y="56%" dominant-baseline="middle" text-anchor="middle" font-size="11" font-weight="900" fill="#00baf2" font-family="Inter,sans-serif">Paytm</text></svg>
+        <svg class="upi-app-icon" viewBox="0 0 36 36"><rect width="36" height="36" rx="10" fill="#002970"/><text x="50%" y="54%" dominant-baseline="middle" text-anchor="middle" font-size="10" font-weight="900" fill="#00baf2" font-family="Inter,sans-serif" letter-spacing="-0.5px">Paytm</text></svg>
         <span class="upi-app-name">Paytm</span>
       </a>
       <a class="upi-app-btn" href="#" onclick="openUpiApp('bhim',event)">
-        <svg class="upi-app-icon" viewBox="0 0 36 36"><rect width="36" height="36" rx="10" fill="#0b2f6b"/><text x="50%" y="56%" dominant-baseline="middle" text-anchor="middle" font-size="10" font-weight="900" fill="#f97316" font-family="Inter,sans-serif">BHIM</text></svg>
+        <svg class="upi-app-icon" viewBox="0 0 36 36"><rect width="36" height="36" rx="10" fill="#002663"/><path d="M12 11l6.5 14H14l-4.5-9.5L12 11z" fill="#f26522"/><path d="M24 11L17.5 25H22l4.5-9.5L24 11z" fill="#008638"/><text x="50%" y="55%" dominant-baseline="middle" text-anchor="middle" font-size="8" font-weight="900" fill="#ffffff" font-family="Inter,sans-serif" letter-spacing="0.5px">BHIM</text></svg>
         <span class="upi-app-name">BHIM</span>
       </a>
       <a class="upi-app-btn" href="#" onclick="openUpiApp('supermoney',event)">
-        <svg class="upi-app-icon" viewBox="0 0 36 36"><rect width="36" height="36" rx="10" fill="#4f46e5"/><text x="50%" y="56%" dominant-baseline="middle" text-anchor="middle" font-size="14" font-weight="bold" fill="white" font-family="Inter,sans-serif">S</text></svg>
+        <svg class="upi-app-icon" viewBox="0 0 36 36"><rect width="36" height="36" rx="10" fill="#6D28D9"/><path d="M20.5 10.5c-2.8 0-4.5 1.5-4.5 3.5 0 3.8 6.5 2.2 6.5 5 0 1.2-1.1 2-2.8 2-2.1 0-3.6-.8-4.5-1.8l-1.8 2.2c1.2 1.5 3.3 2.5 6.3 2.5 3.2 0 5.2-1.6 5.2-4 0-4.1-6.5-2.4-6.5-5.1 0-1 .9-1.7 2.4-1.7 1.8 0 3 .6 3.8 1.4l1.7-2.1c-1.3-1.2-3.1-1.9-5.8-1.9z" fill="#CCFF00"/><circle cx="25.5" cy="22.5" r="1.5" fill="#CCFF00"/></svg>
         <span class="upi-app-name">super.money</span>
       </a>
       <a class="upi-app-btn" href="#" onclick="openUpiApp('other',event)">
-        <svg class="upi-app-icon" viewBox="0 0 36 36"><rect width="36" height="36" rx="10" fill="#f3f4f6"/><text x="50%" y="56%" dominant-baseline="middle" text-anchor="middle" font-size="20" fill="#6b7280">&#8943;</text></svg>
+        <svg class="upi-app-icon" viewBox="0 0 36 36"><rect width="36" height="36" rx="10" fill="#f1f5f9"/><circle cx="12" cy="18" r="2.2" fill="#475569"/><circle cx="18" cy="18" r="2.2" fill="#475569"/><circle cx="24" cy="18" r="2.2" fill="#475569"/></svg>
         <span class="upi-app-name">Other UPI</span>
       </a>
     </div>
