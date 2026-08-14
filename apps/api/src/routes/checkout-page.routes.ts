@@ -268,7 +268,7 @@ function openUpiApp(app,evt){
     phonepe:'phonepe://pay?'+npciQuery,
     paytm:'paytmmp://pay?'+npciQuery,
     bhim:'bhim://pay?'+npciQuery,
-    supermoney:'supermoney://pay?'+npciQuery
+    supermoney:'super://pay?'+npciQuery
   };
 
   var playStores={
@@ -301,15 +301,16 @@ function openUpiApp(app,evt){
 
   var storeUrl=isIOS?appStores[app]:playStores[app];
   if(storeUrl&&app!=='other'){
+    var timeoutMs=isIOS?4000:2500;
     fallbackTimer=setTimeout(function(){
       // Execute store fallback ONLY if app did NOT launch and page remains active in foreground
       if(!appLaunched&&!document.hidden&&document.visibilityState!=='hidden'){
         var elapsed=Date.now()-startTime;
-        if(elapsed<3000){
+        if(elapsed<4800){
           window.location.href=storeUrl;
         }
       }
-    },2500);
+    },timeoutMs);
   }
 }
 
