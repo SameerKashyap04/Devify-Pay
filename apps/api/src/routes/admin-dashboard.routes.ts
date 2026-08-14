@@ -35,15 +35,36 @@ export async function adminDashboardRoutes(app: FastifyInstance) {
   });
 
   app.get("/v1/admin/audit-logs", { preHandler: [adminSessionAuth] }, async (req) => {
-    const query = req.query as { resource_type?: string; resource_id?: string };
-    const logs = await prisma.auditLog.findMany({
-      where: {
-        resourceType: query.resource_type,
-        resourceId: query.resource_id,
+    const query = req.query as { resource_type?: string; resource_id?: string; action?: string; page?: string; limit?: string };
+    const page = Math.max(1, parseInt(query.page || "1", 10));
+    const limit = Math.min(100, Math.max(1, parseInt(query.limit || "15", 10)));
+    const skip = (page - 1) * limit;
+
+    const where: any = {};
+    if (query.resource_type) where.resourceType = query.resource_type;
+    if (query.resource_id) where.resourceId = query.resource_id;
+    if (query.action) where.action = { contains: query.action };
+
+    const [logs, total] = await Promise.all([
+      prisma.auditLog.findMany({
+        where,
+        orderBy: { createdAt: "desc" },
+        skip,
+        take: limit,
+      }),
+      prisma.auditLog.count({ where }),
+    ]);
+
+    const totalPages = Math.ceil(total / limit) || 1;
+
+    return {
+      data: logs,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages,
       },
-      orderBy: { createdAt: "desc" },
-      take: 200,
-    });
-    return { data: logs };
+    };
   });
 }
