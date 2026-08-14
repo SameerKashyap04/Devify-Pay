@@ -5,6 +5,15 @@ import { useParams, useRouter } from "next/navigation";
 import { adminApiFetch } from "../../../lib/api";
 import AppShell from "../../components/AppShell";
 
+interface ApplicationData {
+  id: string;
+  name: string;
+  slug: string;
+  description?: string;
+  webhookUrl?: string;
+  webhookSecret?: string;
+}
+
 interface ApiKeyRow {
   id: string;
   environment: "TEST" | "LIVE";
@@ -18,23 +27,35 @@ interface ApiKeyRow {
 export default function ApplicationDetailPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
+  const [appData, setAppData] = useState<ApplicationData | null>(null);
   const [keys, setKeys] = useState<ApiKeyRow[] | null>(null);
   const [newSecret, setNewSecret] = useState<string | null>(null);
+  const [showWebhookSecret, setShowWebhookSecret] = useState(false);
+  const [copiedSecret, setCopiedSecret] = useState(false);
   const [busy, setBusy] = useState(false);
 
-  const loadKeys = useCallback(async () => {
-    const res = await adminApiFetch(`/v1/admin/applications/${params.id}/api-keys`);
-    if (res.status === 401) {
+  const loadData = useCallback(async () => {
+    const [appRes, keysRes] = await Promise.all([
+      adminApiFetch(`/v1/admin/applications/${params.id}`),
+      adminApiFetch(`/v1/admin/applications/${params.id}/api-keys`),
+    ]);
+    if (appRes.status === 401 || keysRes.status === 401) {
       router.push("/login");
       return;
     }
-    const data = await res.json();
-    setKeys(data.data);
+    if (appRes.ok) {
+      const data = await appRes.json();
+      setAppData(data);
+    }
+    if (keysRes.ok) {
+      const data = await keysRes.json();
+      setKeys(data.data);
+    }
   }, [params.id, router]);
 
   useEffect(() => {
-    loadKeys();
-  }, [loadKeys]);
+    loadData();
+  }, [loadData]);
 
   async function createKey(environment: "TEST" | "LIVE") {
     setBusy(true);
@@ -47,7 +68,7 @@ export default function ApplicationDetailPage() {
       if (res.ok) {
         const data = await res.json();
         setNewSecret(data.secret);
-        await loadKeys();
+        await loadData();
       }
     } finally {
       setBusy(false);
@@ -59,19 +80,70 @@ export default function ApplicationDetailPage() {
     setBusy(true);
     try {
       await adminApiFetch(`/v1/admin/api-keys/${keyId}/revoke`, { method: "POST" });
-      await loadKeys();
+      await loadData();
     } finally {
       setBusy(false);
     }
   }
+
+  const handleCopyWebhookSecret = () => {
+    if (appData?.webhookSecret) {
+      navigator.clipboard.writeText(appData.webhookSecret);
+      setCopiedSecret(true);
+      setTimeout(() => setCopiedSecret(false), 2000);
+    }
+  };
 
   return (
     <AppShell>
       <div className="mx-auto max-w-4xl p-8">
         <div className="mb-6">
           <div className="text-xs uppercase tracking-wide text-gray-400">Devify Pay Admin</div>
-          <h1 className="text-2xl font-semibold text-gray-900">Application: {params.id}</h1>
+          <h1 className="text-2xl font-semibold text-gray-900">
+            {appData?.name || `Application: ${params.id}`}
+          </h1>
         </div>
+
+        {appData && (
+          <div className="mb-6 rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+            <h2 className="mb-4 text-sm font-semibold text-gray-900">Application Credentials & Settings</h2>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div>
+                <label className="block text-xs font-medium text-gray-500">App Name / Slug</label>
+                <div className="mt-1 text-sm font-semibold text-gray-900">{appData.name} ({appData.slug})</div>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-500">Webhook Receiver URL</label>
+                <div className="mt-1 text-xs font-mono text-gray-800 break-all">{appData.webhookUrl || "—"}</div>
+              </div>
+              <div className="sm:col-span-2">
+                <label className="block text-xs font-medium text-gray-500">DEVIFY_WEBHOOK_SECRET</label>
+                <div className="mt-1 flex items-center gap-2">
+                  <input
+                    type={showWebhookSecret ? "text" : "password"}
+                    readOnly
+                    value={appData.webhookSecret || "whsec_not_configured"}
+                    className="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-1.5 text-xs font-mono text-gray-900"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowWebhookSecret(!showWebhookSecret)}
+                    className="rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50"
+                  >
+                    {showWebhookSecret ? "Hide" : "Show"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleCopyWebhookSecret}
+                    className="rounded-lg bg-gray-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-gray-800"
+                  >
+                    {copiedSecret ? "Copied!" : "Copy"}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {newSecret && (
           <div className="mb-6 rounded-2xl border border-amber-200 bg-amber-50 p-4">

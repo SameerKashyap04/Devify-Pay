@@ -15,6 +15,14 @@ export async function adminApplicationRoutes(app: FastifyInstance) {
     return { data: apps };
   });
 
+  app.get("/v1/admin/applications/:id", { preHandler: [adminSessionAuth] }, async (req) => {
+    const { id } = req.params as { id: string };
+    const application = await prisma.application.findUnique({ where: { id } });
+    if (!application) throw new ApiError(404, "APPLICATION_NOT_FOUND", "Application not found");
+    return application;
+  });
+
+
   app.post("/v1/admin/applications", { preHandler: [adminSessionAuth] }, async (req, reply) => {
     const body = createApplicationSchema.parse(req.body);
     const application = await prisma.application.create({
