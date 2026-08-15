@@ -59,7 +59,13 @@ export async function adminReportRoutes(app: FastifyInstance) {
       payment_id: p.publicId,
       application: p.application.name,
       amount: p.amount,
-      status: p.status,
+      status:
+        p.status === "PENDING" && !p.transactionRef
+          ? "CREATED"
+          : p.status === "PENDING" && p.transactionRef
+          ? "PENDING_VERIFICATION"
+          : p.status,
+      transaction_ref: p.transactionRef ?? "—",
       method: p.method,
       created_at: p.createdAt.toISOString(),
     }));
