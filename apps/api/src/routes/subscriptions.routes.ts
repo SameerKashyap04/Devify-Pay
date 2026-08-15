@@ -5,6 +5,7 @@ import { apiKeyAuth } from "../middleware/api-key-auth.js";
 import { adminSessionAuth } from "../middleware/admin-session-auth.js";
 import { requireIdempotencyKey, storeIdempotentResponse } from "../middleware/idempotency.js";
 import { dispatchWebhookEvent } from "../services/webhook.service.js";
+import { getOrCreateCustomer } from "../services/customer.service.js";
 import { ApiError } from "../middleware/error-handler.js";
 
 export async function subscriptionRoutes(app: FastifyInstance) {
@@ -46,14 +47,23 @@ export async function subscriptionRoutes(app: FastifyInstance) {
       });
       if (!plan) throw new ApiError(404, "PLAN_NOT_FOUND", "Plan not found");
 
-      const customer = await prisma.customer.create({
-        data: {
-          applicationId: req.auth!.applicationId,
-          name: body.customer.name,
-          email: body.customer.email,
-          phone: body.customer.phone,
-        },
+      let customer = await getOrCreateCustomer({
+        applicationId: req.auth!.applicationId,
+        name: body.customer.name,
+        email: body.customer.email,
+        phone: body.customer.phone,
       });
+
+      if (!customer) {
+        customer = await prisma.customer.create({
+          data: {
+            applicationId: req.auth!.applicationId,
+            name: body.customer.name,
+            email: body.customer.email,
+            phone: body.customer.phone,
+          },
+        });
+      }
 
       const subscription = await prisma.subscription.create({
         data: {

@@ -2,6 +2,7 @@ import { prisma } from "@devify/database";
 import { generatePublicId } from "@devify/crypto";
 import type { CreateOrderBody } from "@devify/validation";
 import { ApiError } from "../middleware/error-handler.js";
+import { getOrCreateCustomer } from "./customer.service.js";
 
 export async function createOrder(params: {
   applicationId: string;
@@ -12,15 +13,13 @@ export async function createOrder(params: {
 
   let customerId: string | undefined;
   if (body.customer?.email || body.customer?.phone) {
-    const customer = await prisma.customer.create({
-      data: {
-        applicationId,
-        name: body.customer.name,
-        email: body.customer.email,
-        phone: body.customer.phone,
-      },
+    const customer = await getOrCreateCustomer({
+      applicationId,
+      name: body.customer.name,
+      email: body.customer.email,
+      phone: body.customer.phone,
     });
-    customerId = customer.id;
+    customerId = customer?.id;
   }
 
   const order = await prisma.order.create({

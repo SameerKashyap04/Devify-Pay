@@ -9,6 +9,7 @@
     "db:migrate": "pnpm --filter @devify/database prisma migrate dev",
     "db:deploy": "pnpm --filter @devify/database exec prisma migrate deploy",
     "db:seed": "pnpm --filter @devify/database exec tsx prisma/seed.ts",
+    "db:dedupe": "tsx --env-file=.env scripts/dedupe-customers.ts",
     "db:reset": "pnpm --filter @devify/database exec prisma migrate reset --force",
     "test": "pnpm -r test",
     "test:e2e": "playwright test",
