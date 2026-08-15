@@ -21,6 +21,7 @@ export default function CustomersPage() {
   const router = useRouter();
   const [customers, setCustomers] = useState<CustomerRow[] | null>(null);
   const [q, setQ] = useState("");
+  const [deduping, setDeduping] = useState(false);
 
   const load = useCallback(
     async (query: string) => {
@@ -39,12 +40,33 @@ export default function CustomersPage() {
     load("");
   }, [load]);
 
+  const handleDedupe = async () => {
+    setDeduping(true);
+    try {
+      await adminApiFetch("/v1/admin/customers/dedupe", { method: "POST" });
+      await load(q);
+    } catch (e) {
+      console.error("Deduplication error:", e);
+    } finally {
+      setDeduping(false);
+    }
+  };
+
   return (
     <AppShell>
       <div className="mx-auto max-w-5xl p-8">
-        <div className="mb-6">
-          <div className="text-xs uppercase tracking-wide text-gray-400">Devify Pay Admin</div>
-          <h1 className="text-2xl font-semibold text-gray-900">Customers</h1>
+        <div className="mb-6 flex items-center justify-between">
+          <div>
+            <div className="text-xs uppercase tracking-wide text-gray-400">Devify Pay Admin</div>
+            <h1 className="text-2xl font-semibold text-gray-900">Customers</h1>
+          </div>
+          <button
+            onClick={handleDedupe}
+            disabled={deduping}
+            className="rounded-lg bg-gray-900 px-3.5 py-2 text-xs font-medium text-white shadow-sm hover:bg-gray-800 disabled:opacity-50 transition-colors"
+          >
+            {deduping ? "Cleaning up..." : "Clean Up Duplicates"}
+          </button>
         </div>
 
         <div className="mb-4">
