@@ -18,6 +18,8 @@ export default function ReportsPage() {
   const [selectedReport, setSelectedReport] = useState("revenue");
   const [days, setDays] = useState(30);
   const [reportData, setReportData] = useState<any[] | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
   const [loading, setLoading] = useState(false);
   const [exporting, setExporting] = useState(false);
 
@@ -34,6 +36,7 @@ export default function ReportsPage() {
   }, [selectedReport, days, router]);
 
   useEffect(() => {
+    setCurrentPage(1);
     loadReport();
   }, [loadReport]);
 
@@ -58,8 +61,15 @@ export default function ReportsPage() {
     }
   };
 
-  // Helper metrics
+  // Helper metrics & pagination
   const totalCount = reportData?.length ?? 0;
+  const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
+  const safeCurrentPage = Math.min(currentPage, totalPages);
+
+  const startIndex = (safeCurrentPage - 1) * pageSize;
+  const endIndex = Math.min(startIndex + pageSize, totalCount);
+  const paginatedData = reportData ? reportData.slice(startIndex, endIndex) : [];
+
   const totalAmountRupees = reportData
     ? (
         reportData.reduce((sum, r) => sum + (typeof r.amount === "number" ? r.amount : 0), 0) / 100
@@ -140,7 +150,9 @@ export default function ReportsPage() {
             <h2 className="text-sm font-semibold text-gray-800">
               {REPORTS.find((r) => r.key === selectedReport)?.label} Preview
             </h2>
-            <span className="text-xs text-gray-400">{totalCount} rows</span>
+            <span className="text-xs font-medium text-gray-500">
+              Page {safeCurrentPage} of {totalPages} ({totalCount} total rows)
+            </span>
           </div>
 
           {loading ? (
@@ -148,36 +160,107 @@ export default function ReportsPage() {
           ) : !reportData || reportData.length === 0 ? (
             <div className="p-12 text-center text-sm text-gray-400">No records found for the selected time window.</div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-sm">
-                <thead className="bg-gray-50 text-xs uppercase tracking-wider text-gray-500">
-                  <tr>
-                    {Object.keys(reportData[0]).map((col) => (
-                      <th key={col} className="px-6 py-3 font-semibold">
-                        {col.replace(/_/g, " ")}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100">
-                  {reportData.map((row, idx) => (
-                    <tr key={idx} className="hover:bg-gray-50/50">
-                      {Object.entries(row).map(([colKey, val]) => (
-                        <td key={colKey} className="whitespace-nowrap px-6 py-3 text-xs text-gray-700">
-                          {colKey === "amount" && typeof val === "number" ? (
-                            <span className="font-semibold text-gray-900">&#8377;{(val / 100).toFixed(2)}</span>
-                          ) : colKey === "created_at" && typeof val === "string" ? (
-                            new Date(val).toLocaleString()
-                          ) : (
-                            String(val ?? "N/A")
-                          )}
-                        </td>
+            <>
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-sm">
+                  <thead className="bg-gray-50 text-xs uppercase tracking-wider text-gray-500">
+                    <tr>
+                      {Object.keys(reportData[0]).map((col) => (
+                        <th key={col} className="px-6 py-3 font-semibold">
+                          {col.replace(/_/g, " ")}
+                        </th>
                       ))}
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {paginatedData.map((row, idx) => (
+                      <tr key={idx} className="hover:bg-gray-50/50">
+                        {Object.entries(row).map(([colKey, val]) => (
+                          <td key={colKey} className="whitespace-nowrap px-6 py-3 text-xs text-gray-700">
+                            {colKey === "amount" && typeof val === "number" ? (
+                              <span className="font-semibold text-gray-900">&#8377;{(val / 100).toFixed(2)}</span>
+                            ) : colKey === "created_at" && typeof val === "string" ? (
+                              new Date(val).toLocaleString()
+                            ) : (
+                              String(val ?? "N/A")
+                            )}
+                          </td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Pagination Controls Footer */}
+              <div className="border-t border-gray-100 bg-gray-50/50 px-6 py-4 flex flex-wrap items-center justify-between gap-4">
+                <div className="flex items-center gap-3 text-xs text-gray-500 font-medium">
+                  <span>
+                    Showing <strong className="text-gray-900">{totalCount > 0 ? startIndex + 1 : 0}</strong> to{" "}
+                    <strong className="text-gray-900">{endIndex}</strong> of{" "}
+                    <strong className="text-gray-900">{totalCount}</strong> rows
+                  </span>
+                  <span className="text-gray-300">|</span>
+                  <div className="flex items-center gap-1.5">
+                    <span>Rows per page:</span>
+                    <select
+                      value={pageSize}
+                      onChange={(e) => {
+                        setPageSize(Number(e.target.value));
+                        setCurrentPage(1);
+                      }}
+                      className="rounded-lg border border-gray-200 bg-white px-2 py-1 text-xs font-semibold text-gray-700 outline-none focus:border-indigo-500"
+                    >
+                      <option value={5}>5</option>
+                      <option value={10}>10</option>
+                      <option value={25}>25</option>
+                      <option value={50}>50</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-1.5">
+                  <button
+                    onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                    disabled={safeCurrentPage === 1}
+                    className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-40 disabled:hover:bg-white transition-all"
+                  >
+                    Previous
+                  </button>
+
+                  {/* Page number buttons */}
+                  {Array.from({ length: totalPages }, (_, i) => i + 1)
+                    .filter((p) => p === 1 || p === totalPages || Math.abs(p - safeCurrentPage) <= 1)
+                    .map((p, idx, arr) => {
+                      const prev = arr[idx - 1];
+                      const showEllipsis = prev && p - prev > 1;
+                      return (
+                        <div key={p} className="flex items-center gap-1">
+                          {showEllipsis && <span className="px-1 text-xs text-gray-400">...</span>}
+                          <button
+                            onClick={() => setCurrentPage(p)}
+                            className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-all ${
+                              safeCurrentPage === p
+                                ? "bg-indigo-600 text-white shadow-xs"
+                                : "border border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
+                            }`}
+                          >
+                            {p}
+                          </button>
+                        </div>
+                      );
+                    })}
+
+                  <button
+                    onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                    disabled={safeCurrentPage === totalPages}
+                    className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-40 disabled:hover:bg-white transition-all"
+                  >
+                    Next
+                  </button>
+                </div>
+              </div>
+            </>
           )}
         </div>
       </div>
