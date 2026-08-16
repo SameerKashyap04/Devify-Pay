@@ -148,7 +148,7 @@ export default function TransactionsPage() {
             <select
               value={pagination.limit}
               onChange={(e) => handleLimitChange(Number(e.target.value))}
-              className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-600 shadow-sm outline-none focus:border-indigo-500"
+              className="rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 shadow-sm outline-none focus:border-gray-900"
             >
               <option value={10}>10 per page</option>
               <option value={15}>15 per page</option>
@@ -159,16 +159,16 @@ export default function TransactionsPage() {
             <button
               onClick={() => load(pagination.page, pagination.limit)}
               disabled={loading}
-              className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors shadow-sm disabled:opacity-50"
+              className="rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 transition-colors shadow-sm disabled:opacity-50"
             >
-              {loading ? "Loading..." : "↻ Refresh"}
+              {loading ? "Loading..." : "Refresh"}
             </button>
           </div>
         </div>
 
         {/* Stats summary cards */}
         {rows && (
-          <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <div className="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
             {[
               { label: "Total Transactions", value: pagination.total, accent: false },
               {
@@ -189,10 +189,10 @@ export default function TransactionsPage() {
             ].map((stat) => (
               <div
                 key={stat.label}
-                className={`rounded-xl border p-4 shadow-sm ${stat.accent ? "border-amber-200 bg-amber-50" : "border-gray-100 bg-white"}`}
+                className={`rounded-2xl border p-5 shadow-sm transition-all ${stat.accent ? "border-amber-200 bg-amber-50/60" : "border-gray-100 bg-white"}`}
               >
                 <div className="text-xs font-medium uppercase tracking-wide text-gray-400">{stat.label}</div>
-                <div className="mt-1 text-xl font-semibold text-gray-900">{stat.value}</div>
+                <div className="mt-2 text-2xl font-semibold text-gray-900">{stat.value}</div>
               </div>
             ))}
           </div>
@@ -205,13 +205,13 @@ export default function TransactionsPage() {
             placeholder="Search customer, app, reference…"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="h-9 w-72 rounded-lg border border-gray-200 bg-white px-3 text-sm text-gray-700 placeholder-gray-400 shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-300"
+            className="w-full max-w-xs rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 placeholder-gray-400 shadow-sm outline-none focus:border-gray-900 focus:ring-1 focus:ring-gray-900"
           />
 
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="h-9 rounded-lg border border-gray-200 bg-white px-3 text-sm text-gray-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-300"
+            className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 shadow-sm outline-none focus:border-gray-900"
           >
             <option value="">All Statuses</option>
             <option value="SUCCESS">Success</option>
@@ -223,7 +223,7 @@ export default function TransactionsPage() {
           <select
             value={typeFilter}
             onChange={(e) => setTypeFilter(e.target.value)}
-            className="h-9 rounded-lg border border-gray-200 bg-white px-3 text-sm text-gray-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-300"
+            className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 shadow-sm outline-none focus:border-gray-900"
           >
             <option value="">All Types</option>
             <option value="PAYMENT">Payment</option>
@@ -231,7 +231,7 @@ export default function TransactionsPage() {
             <option value="ADJUSTMENT">Adjustment</option>
           </select>
 
-          <div className="flex rounded-lg border border-gray-200 bg-white shadow-sm overflow-hidden">
+          <div className="flex rounded-lg border border-gray-300 bg-white shadow-sm overflow-hidden">
             {DAYS_OPTIONS.map((opt) => (
               <button
                 key={opt.value}
@@ -251,15 +251,18 @@ export default function TransactionsPage() {
         {/* Table container */}
         <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
           {rows === null || loading ? (
-            <div className="p-12 text-center">
-              <div className="inline-block h-6 w-6 animate-spin rounded-full border-2 border-indigo-400 border-t-transparent" />
-              <p className="mt-3 text-sm text-gray-400">Loading transactions…</p>
-            </div>
+            <div className="p-8 text-center text-sm text-gray-400">Loading transactions...</div>
           ) : rows.length === 0 ? (
             <div className="p-16 text-center">
-              <div className="text-4xl mb-3">📋</div>
-              <p className="text-sm font-medium text-gray-500">No transactions found</p>
-              <p className="text-xs text-gray-400 mt-1">Try adjusting your filters or date range</p>
+              <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-gray-50 border border-gray-100 text-gray-400">
+                <svg className="h-6 w-6 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3m-3.75 3h15a2.25 2.25 0 0 0 2.25-2.25V6.75A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25v10.5A2.25 2.25 0 0 0 4.5 19.5Z" />
+                </svg>
+              </div>
+              <h3 className="text-sm font-semibold text-gray-900">No transactions found</h3>
+              <p className="mt-1 text-xs text-gray-500 max-w-sm mx-auto">
+                No payment transactions match the selected filters or date range.
+              </p>
             </div>
           ) : (
             <>
