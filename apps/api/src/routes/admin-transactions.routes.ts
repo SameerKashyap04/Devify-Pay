@@ -61,13 +61,13 @@ export async function adminTransactionRoutes(app: FastifyInstance) {
     // Collect unique (customerId, applicationId) pairs for subscription lookup
     const customerAppPairs: { customerId: string; applicationId: string }[] = [];
     for (const t of transactions) {
-      const cid = t.payment?.customer ? t.payment.customerId : null;
-      if (cid && t.type === "SUBSCRIPTION") {
+      const cid = t.payment?.customerId ?? null;
+      if (cid) {
         customerAppPairs.push({ customerId: cid, applicationId: t.applicationId });
       }
     }
 
-    // Bulk fetch active subscriptions + their plans for SUBSCRIPTION type rows
+    // Bulk fetch active subscriptions + their plans
     let subMap = new Map<string, { planName: string; planDescription: string | null; interval: string }>();
     if (customerAppPairs.length > 0) {
       const subs = await prisma.subscription.findMany({
@@ -99,7 +99,7 @@ export async function adminTransactionRoutes(app: FastifyInstance) {
       const customerId = t.payment?.customerId ?? null;
 
       const subKey = `${customerId}::${t.applicationId}`;
-      const sub = t.type === "SUBSCRIPTION" ? subMap.get(subKey) : undefined;
+      const sub = subMap.get(subKey);
 
       return {
         id: t.id,
