@@ -25,6 +25,7 @@ import { adminDashboardRoutes } from "./routes/admin-dashboard.routes.js";
 import { adminCustomerRoutes } from "./routes/admin-customers.routes.js";
 import { adminReportRoutes } from "./routes/admin-reports.routes.js";
 import { adminSettingsRoutes } from "./routes/admin-settings.routes.js";
+import { adminSubscriptionRoutes } from "./routes/admin-subscriptions.routes.js";
 import { adminTransactionRoutes } from "./routes/admin-transactions.routes.js";
 import { upiNotifyRoutes } from "./routes/upi-notify.routes.js";
 
@@ -138,6 +139,7 @@ async function buildServer() {
       await adminScope.register(adminCustomerRoutes);
       await adminScope.register(adminReportRoutes);
       await adminScope.register(adminSettingsRoutes);
+      await adminScope.register(adminSubscriptionRoutes);
       await adminScope.register(adminTransactionRoutes);
     },
     { prefix: "" }

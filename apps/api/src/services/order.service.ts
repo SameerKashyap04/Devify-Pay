@@ -22,6 +22,41 @@ export async function createOrder(params: {
     customerId = customer?.id;
   }
 
+  const metadata: Record<string, any> = { ...((body.metadata as Record<string, any>) || {}) };
+  let planId = metadata.plan_id || metadata.planId;
+
+  if (!planId && body.description) {
+    const plans = await prisma.plan.findMany({ where: { applicationId, active: true } });
+    const matched = plans.find(
+      (p) =>
+        body.description?.toLowerCase().includes(p.name.toLowerCase()) ||
+        (p.amount === body.amount && body.description?.toLowerCase().includes("sub"))
+    );
+    if (matched) planId = matched.id;
+  }
+
+  if (customerId && planId) {
+    const existingSub = await prisma.subscription.findFirst({
+      where: { customerId, planId, applicationId },
+    });
+    if (!existingSub) {
+      const newSub = await prisma.subscription.create({
+        data: {
+          applicationId,
+          customerId,
+          planId,
+          status: "TRIALING",
+          metadata: { created_via: "order_creation" },
+        },
+      });
+      metadata.subscription_id = newSub.id;
+      metadata.plan_id = planId;
+    } else {
+      metadata.subscription_id = existingSub.id;
+      metadata.plan_id = planId;
+    }
+  }
+
   const order = await prisma.order.create({
     data: {
       publicId: generatePublicId("ord"),
@@ -32,7 +67,7 @@ export async function createOrder(params: {
       description: body.description,
       status: "PENDING",
       mode,
-      metadata: body.metadata as any,
+      metadata,
       expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000), // 24h default expiry
     },
   });

@@ -115,8 +115,15 @@ export async function adminReportRoutes(app: FastifyInstance) {
       subscription_id: s.id,
       application: s.application.name,
       plan: s.plan.name,
-      customer: s.customer.email ?? s.customer.phone ?? "N/A",
+      amount: s.plan.amount,
+      currency: s.plan.currency,
+      interval: `${s.plan.intervalCount} ${s.plan.interval}`,
+      customer_name: s.customer.name ?? "N/A",
+      customer_email: s.customer.email ?? "N/A",
+      customer_phone: s.customer.phone ?? "N/A",
       status: s.status,
+      start_date: s.startDate ? s.startDate.toISOString() : "N/A",
+      end_date: s.endDate ? s.endDate.toISOString() : "N/A",
       created_at: s.createdAt.toISOString(),
     }));
 

@@ -6,6 +6,7 @@ import { ApiError } from "../middleware/error-handler.js";
 import { buildProviderRegistry } from "../providers/registry.js";
 import { dispatchWebhookEvent } from "./webhook.service.js";
 import { recordAuditLog } from "./audit.service.js";
+import { autoActivateSubscriptionForOrder } from "./subscription.service.js";
 
 const providerRegistry = buildProviderRegistry();
 
@@ -177,6 +178,12 @@ export async function adminVerifyPayment(params: {
           provider: "MANUAL_UPI",
           referenceId: payment.transactionRef ?? undefined,
         },
+      });
+
+      await autoActivateSubscriptionForOrder({
+        orderId: payment.order.id,
+        paymentId: payment.id,
+        tx,
       });
     }
 

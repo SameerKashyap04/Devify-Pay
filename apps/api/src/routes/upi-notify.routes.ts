@@ -17,6 +17,7 @@ import type { FastifyInstance } from "fastify";
 import { prisma } from "@devify/database";
 import { dispatchWebhookEvent } from "../services/webhook.service.js";
 import { recordAuditLog } from "../services/audit.service.js";
+import { autoActivateSubscriptionForOrder } from "../services/subscription.service.js";
 import { rateLimits } from "../config/rate-limits.js";
 
 // Regex to extract Devify Pay payment publicId from Google Pay notification text
@@ -141,6 +142,12 @@ export async function upiNotifyRoutes(app: FastifyInstance) {
             provider: "MANUAL_UPI",
             referenceId: paymentPublicId,
           },
+        });
+
+        await autoActivateSubscriptionForOrder({
+          orderId: payment.order.id,
+          paymentId: payment.id,
+          tx,
         });
 
         await tx.auditLog.create({
