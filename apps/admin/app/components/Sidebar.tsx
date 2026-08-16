@@ -9,6 +9,7 @@ const NAV_ITEMS = [
   { href: "/applications", label: "Applications" },
   { href: "/customers", label: "Customers" },
   { href: "/payments", label: "Payments" },
+  { href: "/transactions", label: "Transactions" },
   { href: "/refunds", label: "Refunds" },
   { href: "/subscriptions", label: "Subscriptions" },
   { href: "/reports", label: "Reports" },
