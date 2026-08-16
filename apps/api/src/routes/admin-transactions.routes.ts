@@ -5,7 +5,7 @@ import { adminSessionAuth } from "../middleware/admin-session-auth.js";
 export async function adminTransactionRoutes(app: FastifyInstance) {
   /**
    * GET /v1/admin/transactions
-   * Returns all transactions enriched with:
+   * Returns paginated transactions enriched with:
    *   - customer name / email / phone
    *   - application name
    *   - amount + currency
@@ -19,44 +19,87 @@ export async function adminTransactionRoutes(app: FastifyInstance) {
       application_id?: string;
       q?: string;
       days?: string;
+      page?: string;
       limit?: string;
     };
 
+    const page = Math.max(1, parseInt(query.page || "1", 10));
+    const limit = Math.min(100, Math.max(1, parseInt(query.limit || "15", 10)));
+    const skip = (page - 1) * limit;
+
     const days = query.days ? Number(query.days) : undefined;
     const since = days ? new Date(Date.now() - days * 24 * 60 * 60 * 1000) : undefined;
-    const limit = Math.min(Number(query.limit ?? 200), 500);
 
-    const transactions = await prisma.transaction.findMany({
-      where: {
-        ...(query.status ? { status: query.status as any } : {}),
-        ...(query.type ? { type: query.type as any } : {}),
-        ...(query.application_id ? { applicationId: query.application_id } : {}),
-        ...(since ? { createdAt: { gte: since } } : {}),
-      },
-      include: {
-        application: { select: { id: true, name: true } },
-        payment: {
-          select: {
-            publicId: true,
-            method: true,
-            transactionRef: true,
-            customerId: true,
-            customer: {
-              select: { name: true, email: true, phone: true },
+    const where: any = {};
+    if (query.status) where.status = query.status;
+    if (query.type) where.type = query.type;
+    if (query.application_id) where.applicationId = query.application_id;
+    if (since) where.createdAt = { gte: since };
+
+    if (query.q) {
+      const search = query.q.trim();
+      where.OR = [
+        { referenceId: { contains: search, mode: "insensitive" } },
+        { id: { contains: search, mode: "insensitive" } },
+        { application: { name: { contains: search, mode: "insensitive" } } },
+        {
+          payment: {
+            OR: [
+              { publicId: { contains: search, mode: "insensitive" } },
+              { transactionRef: { contains: search, mode: "insensitive" } },
+              {
+                customer: {
+                  OR: [
+                    { name: { contains: search, mode: "insensitive" } },
+                    { email: { contains: search, mode: "insensitive" } },
+                    { phone: { contains: search, mode: "insensitive" } },
+                  ],
+                },
+              },
+            ],
+          },
+        },
+        {
+          order: {
+            OR: [
+              { publicId: { contains: search, mode: "insensitive" } },
+              { description: { contains: search, mode: "insensitive" } },
+            ],
+          },
+        },
+      ];
+    }
+
+    const [transactions, total] = await Promise.all([
+      prisma.transaction.findMany({
+        where,
+        include: {
+          application: { select: { id: true, name: true } },
+          payment: {
+            select: {
+              publicId: true,
+              method: true,
+              transactionRef: true,
+              customerId: true,
+              customer: {
+                select: { name: true, email: true, phone: true },
+              },
+            },
+          },
+          order: {
+            select: {
+              publicId: true,
+              customerId: true,
+              description: true,
             },
           },
         },
-        order: {
-          select: {
-            publicId: true,
-            customerId: true,
-            description: true,
-          },
-        },
-      },
-      orderBy: { createdAt: "desc" },
-      take: limit,
-    });
+        orderBy: { createdAt: "desc" },
+        skip,
+        take: limit,
+      }),
+      prisma.transaction.count({ where }),
+    ]);
 
     // Collect unique (customerId, applicationId) pairs for subscription lookup
     const customerAppPairs: { customerId: string; applicationId: string }[] = [];
@@ -91,7 +134,7 @@ export async function adminTransactionRoutes(app: FastifyInstance) {
       }
     }
 
-    let data = transactions.map((t: any) => {
+    const data = transactions.map((t: any) => {
       const customer = t.payment?.customer ?? null;
       const customerName = customer?.name ?? customer?.email ?? customer?.phone ?? "Unknown";
       const customerEmail = customer?.email ?? null;
@@ -136,22 +179,17 @@ export async function adminTransactionRoutes(app: FastifyInstance) {
       };
     });
 
-    // Apply search filter (post-DB for cross-field searching)
-    if (query.q) {
-      const q = query.q.toLowerCase();
-      data = data.filter(
-        (row: any) =>
-          row.customer_name?.toLowerCase().includes(q) ||
-          row.customer_email?.toLowerCase().includes(q) ||
-          row.customer_phone?.includes(q) ||
-          row.application_name?.toLowerCase().includes(q) ||
-          row.reference_id?.toLowerCase().includes(q) ||
-          row.plan_name?.toLowerCase().includes(q) ||
-          row.payment_id?.toLowerCase().includes(q) ||
-          row.order_id?.toLowerCase().includes(q)
-      );
-    }
+    const totalPages = Math.ceil(total / limit) || 1;
 
-    return { data, total: data.length };
+    return {
+      data,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages,
+      },
+      total,
+    };
   });
 }

@@ -34,6 +34,13 @@ interface TransactionRow {
   plan_interval: string | null;
 }
 
+interface PaginationInfo {
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+}
+
 const STATUS_STYLES: Record<string, string> = {
   SUCCESS: "bg-emerald-100 text-emerald-700 border border-emerald-200",
   PENDING: "bg-amber-100 text-amber-700 border border-amber-200",
@@ -44,8 +51,8 @@ const STATUS_STYLES: Record<string, string> = {
 const TYPE_STYLES: Record<string, string> = {
   PAYMENT: "bg-indigo-50 text-indigo-700",
   REFUND: "bg-sky-50 text-sky-700",
+  ADJUSTMENT: "bg-violet-50 text-violet-700",
   SUBSCRIPTION: "bg-violet-50 text-violet-700",
-  PAYOUT: "bg-orange-50 text-orange-700",
 };
 
 const DAYS_OPTIONS = [
@@ -63,34 +70,67 @@ function formatAmount(amount: number, currency: string) {
 export default function TransactionsPage() {
   const router = useRouter();
   const [rows, setRows] = useState<TransactionRow[] | null>(null);
-  const [total, setTotal] = useState(0);
+  const [pagination, setPagination] = useState<PaginationInfo>({
+    page: 1,
+    limit: 15,
+    total: 0,
+    totalPages: 1,
+  });
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [typeFilter, setTypeFilter] = useState("");
   const [daysFilter, setDaysFilter] = useState("");
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
 
-  const load = useCallback(async () => {
-    setRows(null);
-    const params = new URLSearchParams();
-    if (statusFilter) params.set("status", statusFilter);
-    if (typeFilter) params.set("type", typeFilter);
-    if (daysFilter) params.set("days", daysFilter);
-    if (search) params.set("q", search);
-    const qs = params.toString();
-    const res = await adminApiFetch(`/v1/admin/transactions${qs ? `?${qs}` : ""}`);
-    if (res.status === 401) { router.push("/login"); return; }
-    const data = await res.json();
-    setRows(data.data ?? []);
-    setTotal(data.total ?? 0);
-  }, [router, statusFilter, typeFilter, daysFilter, search]);
+  const load = useCallback(
+    async (pageToLoad = pagination.page, limitToLoad = pagination.limit) => {
+      setLoading(true);
+      const params = new URLSearchParams();
+      params.set("page", String(pageToLoad));
+      params.set("limit", String(limitToLoad));
+      if (statusFilter) params.set("status", statusFilter);
+      if (typeFilter) params.set("type", typeFilter);
+      if (daysFilter) params.set("days", daysFilter);
+      if (search) params.set("q", search);
 
+      const qs = params.toString();
+      const res = await adminApiFetch(`/v1/admin/transactions?${qs}`);
+      setLoading(false);
+      if (res.status === 401) {
+        router.push("/login");
+        return;
+      }
+      const data = await res.json();
+      setRows(data.data ?? []);
+      if (data.pagination) {
+        setPagination(data.pagination);
+      }
+    },
+    [router, statusFilter, typeFilter, daysFilter, search, pagination.page, pagination.limit]
+  );
+
+  // Initial and debounced filter reload (resets to page 1)
   useEffect(() => {
-    const timer = setTimeout(load, search ? 350 : 0);
+    const timer = setTimeout(() => {
+      load(1, pagination.limit);
+    }, search ? 300 : 0);
     return () => clearTimeout(timer);
-  }, [load, search]);
+  }, [search, statusFilter, typeFilter, daysFilter]);
 
-  const totalRevenue = rows
+  const handlePageChange = (newPage: number) => {
+    if (newPage < 1 || newPage > pagination.totalPages || newPage === pagination.page) return;
+    load(newPage, pagination.limit);
+  };
+
+  const handleLimitChange = (newLimit: number) => {
+    load(1, newLimit);
+  };
+
+  const startEntry = pagination.total > 0 ? (pagination.page - 1) * pagination.limit + 1 : 0;
+  const endEntry = Math.min(pagination.page * pagination.limit, pagination.total);
+
+  const totalPageRevenue = rows
     ? rows.filter((r) => r.status === "SUCCESS" && r.type === "PAYMENT").reduce((s, r) => s + r.amount, 0)
     : 0;
 
@@ -98,38 +138,52 @@ export default function TransactionsPage() {
     <AppShell>
       <div className="mx-auto max-w-7xl p-8">
         {/* Header */}
-        <div className="mb-6 flex items-start justify-between">
+        <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
           <div>
             <div className="text-xs uppercase tracking-widest text-gray-400 mb-1">Devify Pay Admin</div>
             <h1 className="text-2xl font-semibold text-gray-900">Transaction History</h1>
             <p className="mt-1 text-sm text-gray-500">All payment transactions with customer, app &amp; subscription details</p>
           </div>
-          <button
-            onClick={load}
-            className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-50 transition-colors shadow-sm"
-          >
-            ↻ Refresh
-          </button>
+          <div className="flex items-center gap-3">
+            <select
+              value={pagination.limit}
+              onChange={(e) => handleLimitChange(Number(e.target.value))}
+              className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-600 shadow-sm outline-none focus:border-indigo-500"
+            >
+              <option value={10}>10 per page</option>
+              <option value={15}>15 per page</option>
+              <option value={25}>25 per page</option>
+              <option value={50}>50 per page</option>
+              <option value={100}>100 per page</option>
+            </select>
+            <button
+              onClick={() => load(pagination.page, pagination.limit)}
+              disabled={loading}
+              className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors shadow-sm disabled:opacity-50"
+            >
+              {loading ? "Loading..." : "↻ Refresh"}
+            </button>
+          </div>
         </div>
 
-        {/* Stats row */}
+        {/* Stats summary cards */}
         {rows && (
           <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
             {[
-              { label: "Total Shown", value: total, accent: false },
+              { label: "Total Transactions", value: pagination.total, accent: false },
               {
-                label: "Successful",
-                value: rows.filter((r) => r.status === "SUCCESS").length,
+                label: "Current Page Items",
+                value: rows.length,
                 accent: false,
               },
               {
-                label: "Pending",
+                label: "Pending on Page",
                 value: rows.filter((r) => r.status === "PENDING").length,
                 accent: rows.filter((r) => r.status === "PENDING").length > 0,
               },
               {
-                label: "Revenue (SUCCESS)",
-                value: formatAmount(totalRevenue, "INR"),
+                label: "Page Revenue (SUCCESS)",
+                value: formatAmount(totalPageRevenue, "INR"),
                 accent: false,
               },
             ].map((stat) => (
@@ -163,7 +217,7 @@ export default function TransactionsPage() {
             <option value="SUCCESS">Success</option>
             <option value="PENDING">Pending</option>
             <option value="FAILED">Failed</option>
-            <option value="REFUNDED">Refunded</option>
+            <option value="REVERSED">Reversed</option>
           </select>
 
           <select
@@ -174,8 +228,7 @@ export default function TransactionsPage() {
             <option value="">All Types</option>
             <option value="PAYMENT">Payment</option>
             <option value="REFUND">Refund</option>
-            <option value="SUBSCRIPTION">Subscription</option>
-            <option value="PAYOUT">Payout</option>
+            <option value="ADJUSTMENT">Adjustment</option>
           </select>
 
           <div className="flex rounded-lg border border-gray-200 bg-white shadow-sm overflow-hidden">
@@ -195,9 +248,9 @@ export default function TransactionsPage() {
           </div>
         </div>
 
-        {/* Table */}
+        {/* Table container */}
         <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
-          {rows === null ? (
+          {rows === null || loading ? (
             <div className="p-12 text-center">
               <div className="inline-block h-6 w-6 animate-spin rounded-full border-2 border-indigo-400 border-t-transparent" />
               <p className="mt-3 text-sm text-gray-400">Loading transactions…</p>
@@ -209,164 +262,212 @@ export default function TransactionsPage() {
               <p className="text-xs text-gray-400 mt-1">Try adjusting your filters or date range</p>
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead className="bg-gray-50 text-left text-xs uppercase tracking-wide text-gray-500 border-b border-gray-100">
-                  <tr>
-                    <th className="px-5 py-3 font-semibold">Customer</th>
-                    <th className="px-5 py-3 font-semibold">App</th>
-                    <th className="px-5 py-3 font-semibold">Subscription / Description</th>
-                    <th className="px-5 py-3 font-semibold">Amount</th>
-                    <th className="px-5 py-3 font-semibold">Type</th>
-                    <th className="px-5 py-3 font-semibold">Status</th>
-                    <th className="px-5 py-3 font-semibold">Date</th>
-                    <th className="px-5 py-3 font-semibold text-right">Details</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-50">
-                  {rows.map((row) => (
-                    <>
-                      <tr
-                        key={row.id}
-                        className="hover:bg-gray-50/60 transition-colors cursor-pointer"
-                        onClick={() => setExpandedId(expandedId === row.id ? null : row.id)}
-                      >
-                        {/* Customer */}
-                        <td className="px-5 py-3.5">
-                          <div className="font-medium text-gray-900 truncate max-w-[160px]">{row.customer_name}</div>
-                          {row.customer_email && (
-                            <div className="text-xs text-gray-400 truncate max-w-[160px]">{row.customer_email}</div>
-                          )}
-                          {!row.customer_email && row.customer_phone && (
-                            <div className="text-xs text-gray-400">{row.customer_phone}</div>
-                          )}
-                        </td>
+            <>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-gray-50 text-left text-xs uppercase tracking-wide text-gray-500 border-b border-gray-100">
+                    <tr>
+                      <th className="px-5 py-3 font-semibold">Customer</th>
+                      <th className="px-5 py-3 font-semibold">App</th>
+                      <th className="px-5 py-3 font-semibold">Subscription / Description</th>
+                      <th className="px-5 py-3 font-semibold">Amount</th>
+                      <th className="px-5 py-3 font-semibold">Type</th>
+                      <th className="px-5 py-3 font-semibold">Status</th>
+                      <th className="px-5 py-3 font-semibold">Date</th>
+                      <th className="px-5 py-3 font-semibold text-right">Details</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-50">
+                    {rows.map((row) => (
+                      <tbody key={row.id} className="contents">
+                        <tr
+                          className="hover:bg-gray-50/60 transition-colors cursor-pointer"
+                          onClick={() => setExpandedId(expandedId === row.id ? null : row.id)}
+                        >
+                          {/* Customer */}
+                          <td className="px-5 py-3.5">
+                            <div className="font-medium text-gray-900 truncate max-w-[160px]">{row.customer_name}</div>
+                            {row.customer_email && (
+                              <div className="text-xs text-gray-400 truncate max-w-[160px]">{row.customer_email}</div>
+                            )}
+                            {!row.customer_email && row.customer_phone && (
+                              <div className="text-xs text-gray-400">{row.customer_phone}</div>
+                            )}
+                          </td>
 
-                        {/* App */}
-                        <td className="px-5 py-3.5">
-                          <span className="font-medium text-gray-800">{row.application_name}</span>
-                        </td>
+                          {/* App */}
+                          <td className="px-5 py-3.5">
+                            <span className="font-medium text-gray-800">{row.application_name}</span>
+                          </td>
 
-                        {/* Subscription / Description */}
-                        <td className="px-5 py-3.5 max-w-[200px]">
-                          {row.plan_name ? (
-                            <div>
-                              <div className="font-medium text-violet-700 text-xs">{row.plan_name}</div>
-                              {row.plan_description && (
-                                <div className="text-xs text-gray-500 truncate">{row.plan_description}</div>
-                              )}
-                              {row.plan_interval && (
-                                <div className="text-xs text-gray-400">{row.plan_interval}</div>
-                              )}
-                            </div>
-                          ) : row.order_description ? (
-                            <span className="text-xs text-gray-500 truncate block">{row.order_description}</span>
-                          ) : (
-                            <span className="text-xs text-gray-300">—</span>
-                          )}
-                        </td>
-
-                        {/* Amount */}
-                        <td className="px-5 py-3.5 font-semibold text-gray-900 tabular-nums">
-                          {formatAmount(row.amount, row.currency)}
-                        </td>
-
-                        {/* Type */}
-                        <td className="px-5 py-3.5">
-                          <span className={`rounded-md px-2 py-0.5 text-xs font-semibold ${TYPE_STYLES[row.type] ?? "bg-gray-100 text-gray-600"}`}>
-                            {row.type}
-                          </span>
-                        </td>
-
-                        {/* Status */}
-                        <td className="px-5 py-3.5">
-                          <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${STATUS_STYLES[row.status] ?? "bg-gray-100 text-gray-600"}`}>
-                            {row.status}
-                          </span>
-                        </td>
-
-                        {/* Date */}
-                        <td className="px-5 py-3.5 text-gray-500 text-xs whitespace-nowrap">
-                          {new Date(row.created_at).toLocaleString("en-IN", {
-                            day: "2-digit", month: "short", year: "numeric",
-                            hour: "2-digit", minute: "2-digit",
-                          })}
-                        </td>
-
-                        {/* Expand toggle */}
-                        <td className="px-5 py-3.5 text-right">
-                          <span className="text-gray-400 text-xs select-none">
-                            {expandedId === row.id ? "▲ Hide" : "▼ More"}
-                          </span>
-                        </td>
-                      </tr>
-
-                      {/* Expanded detail row */}
-                      {expandedId === row.id && (
-                        <tr key={`${row.id}-detail`} className="bg-indigo-50/30">
-                          <td colSpan={8} className="px-5 py-4">
-                            <div className="grid grid-cols-2 gap-4 text-xs sm:grid-cols-4">
+                          {/* Subscription / Description */}
+                          <td className="px-5 py-3.5 max-w-[200px]">
+                            {row.plan_name ? (
                               <div>
-                                <div className="font-semibold text-gray-500 uppercase tracking-wide mb-1">Transaction ID</div>
-                                <div className="font-mono text-gray-700 break-all">{row.id}</div>
+                                <div className="font-medium text-violet-700 text-xs">{row.plan_name}</div>
+                                {row.plan_description && (
+                                  <div className="text-xs text-gray-500 truncate">{row.plan_description}</div>
+                                )}
+                                {row.plan_interval && (
+                                  <div className="text-xs text-gray-400">{row.plan_interval}</div>
+                                )}
                               </div>
-                              {row.payment_id && (
-                                <div>
-                                  <div className="font-semibold text-gray-500 uppercase tracking-wide mb-1">Payment ID</div>
-                                  <div className="font-mono text-gray-700">{row.payment_id}</div>
-                                </div>
-                              )}
-                              {row.order_id && (
-                                <div>
-                                  <div className="font-semibold text-gray-500 uppercase tracking-wide mb-1">Order ID</div>
-                                  <div className="font-mono text-gray-700">{row.order_id}</div>
-                                </div>
-                              )}
-                              {row.payment_transaction_ref && (
-                                <div>
-                                  <div className="font-semibold text-gray-500 uppercase tracking-wide mb-1">UPI Txn Ref</div>
-                                  <div className="font-mono text-gray-700">{row.payment_transaction_ref}</div>
-                                </div>
-                              )}
-                              {row.reference_id && (
-                                <div>
-                                  <div className="font-semibold text-gray-500 uppercase tracking-wide mb-1">Reference</div>
-                                  <div className="font-mono text-gray-700">{row.reference_id}</div>
-                                </div>
-                              )}
-                              <div>
-                                <div className="font-semibold text-gray-500 uppercase tracking-wide mb-1">Provider</div>
-                                <div className="text-gray-700">{row.provider}</div>
-                              </div>
-                              {row.payment_method && (
-                                <div>
-                                  <div className="font-semibold text-gray-500 uppercase tracking-wide mb-1">Method</div>
-                                  <div className="text-gray-700">{row.payment_method}</div>
-                                </div>
-                              )}
-                              {row.customer_phone && (
-                                <div>
-                                  <div className="font-semibold text-gray-500 uppercase tracking-wide mb-1">Phone</div>
-                                  <div className="text-gray-700">{row.customer_phone}</div>
-                                </div>
-                              )}
-                            </div>
+                            ) : row.order_description ? (
+                              <span className="text-xs text-gray-500 truncate block">{row.order_description}</span>
+                            ) : (
+                              <span className="text-xs text-gray-300">—</span>
+                            )}
+                          </td>
+
+                          {/* Amount */}
+                          <td className="px-5 py-3.5 font-semibold text-gray-900 tabular-nums">
+                            {formatAmount(row.amount, row.currency)}
+                          </td>
+
+                          {/* Type */}
+                          <td className="px-5 py-3.5">
+                            <span className={`rounded-md px-2 py-0.5 text-xs font-semibold ${TYPE_STYLES[row.type] ?? "bg-gray-100 text-gray-600"}`}>
+                              {row.type}
+                            </span>
+                          </td>
+
+                          {/* Status */}
+                          <td className="px-5 py-3.5">
+                            <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${STATUS_STYLES[row.status] ?? "bg-gray-100 text-gray-600"}`}>
+                              {row.status}
+                            </span>
+                          </td>
+
+                          {/* Date */}
+                          <td className="px-5 py-3.5 text-gray-500 text-xs whitespace-nowrap">
+                            {new Date(row.created_at).toLocaleString("en-IN", {
+                              day: "2-digit", month: "short", year: "numeric",
+                              hour: "2-digit", minute: "2-digit",
+                            })}
+                          </td>
+
+                          {/* Expand toggle */}
+                          <td className="px-5 py-3.5 text-right">
+                            <span className="text-gray-400 text-xs select-none">
+                              {expandedId === row.id ? "▲ Hide" : "▼ More"}
+                            </span>
                           </td>
                         </tr>
-                      )}
-                    </>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
 
-          {/* Footer count */}
-          {rows && rows.length > 0 && (
-            <div className="border-t border-gray-100 px-5 py-3 text-xs text-gray-400 flex justify-between items-center">
-              <span>Showing {rows.length} transaction{rows.length !== 1 ? "s" : ""}</span>
-              <span className="text-gray-300">Click any row to see full details</span>
-            </div>
+                        {/* Expanded detail row */}
+                        {expandedId === row.id && (
+                          <tr className="bg-indigo-50/30">
+                            <td colSpan={8} className="px-5 py-4">
+                              <div className="grid grid-cols-2 gap-4 text-xs sm:grid-cols-4">
+                                <div>
+                                  <div className="font-semibold text-gray-500 uppercase tracking-wide mb-1">Transaction ID</div>
+                                  <div className="font-mono text-gray-700 break-all">{row.id}</div>
+                                </div>
+                                {row.payment_id && (
+                                  <div>
+                                    <div className="font-semibold text-gray-500 uppercase tracking-wide mb-1">Payment ID</div>
+                                    <div className="font-mono text-gray-700">{row.payment_id}</div>
+                                  </div>
+                                )}
+                                {row.order_id && (
+                                  <div>
+                                    <div className="font-semibold text-gray-500 uppercase tracking-wide mb-1">Order ID</div>
+                                    <div className="font-mono text-gray-700">{row.order_id}</div>
+                                  </div>
+                                )}
+                                {row.payment_transaction_ref && (
+                                  <div>
+                                    <div className="font-semibold text-gray-500 uppercase tracking-wide mb-1">UPI Txn Ref</div>
+                                    <div className="font-mono text-gray-700">{row.payment_transaction_ref}</div>
+                                  </div>
+                                )}
+                                {row.reference_id && (
+                                  <div>
+                                    <div className="font-semibold text-gray-500 uppercase tracking-wide mb-1">Reference</div>
+                                    <div className="font-mono text-gray-700">{row.reference_id}</div>
+                                  </div>
+                                )}
+                                <div>
+                                  <div className="font-semibold text-gray-500 uppercase tracking-wide mb-1">Provider</div>
+                                  <div className="text-gray-700">{row.provider}</div>
+                                </div>
+                                {row.payment_method && (
+                                  <div>
+                                    <div className="font-semibold text-gray-500 uppercase tracking-wide mb-1">Method</div>
+                                    <div className="text-gray-700">{row.payment_method}</div>
+                                  </div>
+                                )}
+                                {row.customer_phone && (
+                                  <div>
+                                    <div className="font-semibold text-gray-500 uppercase tracking-wide mb-1">Phone</div>
+                                    <div className="text-gray-700">{row.customer_phone}</div>
+                                  </div>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Pagination footer bar */}
+              <div className="flex flex-wrap items-center justify-between border-t border-gray-100 px-5 py-3.5 text-xs text-gray-500">
+                <div>
+                  Showing <span className="font-medium text-gray-800">{startEntry}</span> to{" "}
+                  <span className="font-medium text-gray-800">{endEntry}</span> of{" "}
+                  <span className="font-medium text-gray-800">{pagination.total}</span> transactions
+                  {pagination.totalPages > 1 && (
+                    <span className="ml-2 text-gray-400">
+                      (Page {pagination.page} of {pagination.totalPages})
+                    </span>
+                  )}
+                </div>
+
+                {/* Page buttons */}
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => handlePageChange(pagination.page - 1)}
+                    disabled={pagination.page <= 1}
+                    className="rounded-md border border-gray-200 px-2.5 py-1 text-xs font-medium text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40 transition-colors"
+                  >
+                    Previous
+                  </button>
+
+                  {Array.from({ length: pagination.totalPages }, (_, i) => i + 1)
+                    .filter((p) => Math.abs(p - pagination.page) <= 2 || p === 1 || p === pagination.totalPages)
+                    .map((p, idx, arr) => {
+                      const prev = arr[idx - 1];
+                      const showEllipsis = prev && p - prev > 1;
+                      return (
+                        <span key={p} className="flex items-center">
+                          {showEllipsis && <span className="px-1 text-gray-400">...</span>}
+                          <button
+                            onClick={() => handlePageChange(p)}
+                            className={`min-w-[28px] rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
+                              p === pagination.page
+                                ? "bg-indigo-600 text-white shadow-sm"
+                                : "border border-gray-200 text-gray-600 hover:bg-gray-50"
+                            }`}
+                          >
+                            {p}
+                          </button>
+                        </span>
+                      );
+                    })}
+
+                  <button
+                    onClick={() => handlePageChange(pagination.page + 1)}
+                    disabled={pagination.page >= pagination.totalPages}
+                    className="rounded-md border border-gray-200 px-2.5 py-1 text-xs font-medium text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40 transition-colors"
+                  >
+                    Next
+                  </button>
+                </div>
+              </div>
+            </>
           )}
         </div>
       </div>
