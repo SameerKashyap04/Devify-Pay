@@ -1,32 +1,13 @@
 import type { FastifyInstance } from "fastify";
 import { prisma } from "@devify/database";
-import { createPlanSchema, createSubscriptionSchema } from "@devify/validation";
+import { createSubscriptionSchema } from "@devify/validation";
 import { apiKeyAuth } from "../middleware/api-key-auth.js";
-import { adminSessionAuth } from "../middleware/admin-session-auth.js";
 import { requireIdempotencyKey, storeIdempotentResponse } from "../middleware/idempotency.js";
 import { dispatchWebhookEvent } from "../services/webhook.service.js";
 import { getOrCreateCustomer } from "../services/customer.service.js";
 import { ApiError } from "../middleware/error-handler.js";
 
 export async function subscriptionRoutes(app: FastifyInstance) {
-  // --- Plans (admin-managed) ---
-  app.post("/v1/admin/applications/:id/plans", { preHandler: [adminSessionAuth] }, async (req, reply) => {
-    const { id } = req.params as { id: string };
-    const body = createPlanSchema.parse(req.body);
-    const plan = await prisma.plan.create({
-      data: {
-        applicationId: id,
-        name: body.name,
-        description: body.description,
-        amount: body.amount,
-        currency: body.currency,
-        interval: body.interval,
-        intervalCount: body.interval_count,
-      },
-    });
-    reply.status(201).send(plan);
-  });
-
   app.get("/v1/plans", { preHandler: [apiKeyAuth] }, async (req) => {
     const plans = await prisma.plan.findMany({
       where: { applicationId: req.auth!.applicationId, active: true },
@@ -104,23 +85,7 @@ export async function subscriptionRoutes(app: FastifyInstance) {
     return sub;
   });
 
-  // Manual activation — used after a payment for the subscription's first
-  // period has been verified SUCCESS by an admin (V1 has no auto-recurring collection).
-  app.post("/v1/admin/subscriptions/:id/activate", { preHandler: [adminSessionAuth] }, async (req) => {
-    const { id } = req.params as { id: string };
-    const sub = await prisma.subscription.update({
-      where: { id },
-      data: { status: "ACTIVE", startDate: new Date() },
-    });
 
-    await dispatchWebhookEvent({
-      applicationId: sub.applicationId,
-      eventType: "subscription.activated",
-      payload: { subscription_id: sub.id, status: sub.status },
-    });
-
-    return sub;
-  });
 
   app.post("/v1/subscriptions/:id/cancel", { preHandler: [apiKeyAuth] }, async (req) => {
     const { id } = req.params as { id: string };
