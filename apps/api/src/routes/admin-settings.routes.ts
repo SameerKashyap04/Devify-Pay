@@ -6,6 +6,8 @@ import { z } from "zod";
 const updateSettingsBody = z.object({
   upiVpa: z.string().max(100).optional().nullable(),
   merchantName: z.string().max(100).optional().nullable(),
+  accountType: z.enum(["PERSONAL", "MERCHANT"]).optional().nullable(),
+  mcc: z.string().max(10).optional().nullable(),
   upiNotifySecret: z.string().min(8).max(200).optional().nullable(),
 });
 
@@ -20,6 +22,8 @@ export async function adminSettingsRoutes(app: FastifyInstance) {
         select: {
           upiVpa: true,
           merchantName: true,
+          accountType: true,
+          mcc: true,
           upiNotifySecret: true,
           updatedAt: true,
         },
@@ -28,6 +32,8 @@ export async function adminSettingsRoutes(app: FastifyInstance) {
       return {
         upiVpa: config?.upiVpa ?? null,
         merchantName: config?.merchantName ?? null,
+        accountType: config?.accountType ?? "PERSONAL",
+        mcc: config?.mcc ?? null,
         upiNotifySecretSet: !!(config?.upiNotifySecret),
         updatedAt: config?.updatedAt ?? null,
       };
@@ -44,7 +50,7 @@ export async function adminSettingsRoutes(app: FastifyInstance) {
         return reply.status(400).send({ error: { message: "Invalid input", details: body.error.flatten() } });
       }
 
-      const { upiVpa, merchantName, upiNotifySecret } = body.data;
+      const { upiVpa, merchantName, accountType, mcc, upiNotifySecret } = body.data;
 
       const config = await prisma.systemConfig.upsert({
         where: { id: "singleton" },
@@ -52,17 +58,28 @@ export async function adminSettingsRoutes(app: FastifyInstance) {
           id: "singleton",
           upiVpa: upiVpa ?? null,
           merchantName: merchantName ?? null,
+          accountType: accountType ?? "PERSONAL",
+          mcc: mcc ?? null,
           upiNotifySecret: upiNotifySecret ?? null,
         },
         update: {
           ...(upiVpa !== undefined && { upiVpa }),
           ...(merchantName !== undefined && { merchantName }),
+          ...(accountType !== undefined && { accountType: accountType ?? "PERSONAL" }),
+          ...(mcc !== undefined && { mcc }),
           ...(upiNotifySecret !== undefined && { upiNotifySecret }),
         },
-        select: { upiVpa: true, merchantName: true, updatedAt: true },
+        select: { upiVpa: true, merchantName: true, accountType: true, mcc: true, updatedAt: true },
       });
 
-      return { success: true, upiVpa: config.upiVpa, merchantName: config.merchantName, updatedAt: config.updatedAt };
+      return {
+        success: true,
+        upiVpa: config.upiVpa,
+        merchantName: config.merchantName,
+        accountType: config.accountType,
+        mcc: config.mcc,
+        updatedAt: config.updatedAt,
+      };
     }
   );
 }

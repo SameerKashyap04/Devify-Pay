@@ -20,6 +20,10 @@ import { prisma } from "@devify/database";
  */
 let systemConfigCache: { data: any; expiresAt: number } | null = null;
 
+export function _resetSystemConfigCache() {
+  systemConfigCache = null;
+}
+
 async function getSystemConfig() {
   if (systemConfigCache && systemConfigCache.expiresAt > Date.now()) {
     return systemConfigCache.data;
@@ -37,19 +41,29 @@ export class ManualUpiProvider implements PaymentProvider {
     const config = await getSystemConfig();
     const upiVpa = config?.upiVpa ?? env.UPI_MERCHANT_ID;
     const upiName = config?.merchantName ?? env.UPI_MERCHANT_NAME;
+    const accountType = config?.accountType ?? "PERSONAL";
+    const mcc = config?.mcc;
 
     const amountRupees = (input.amount / 100).toFixed(2);
     // CRITICAL: tn = payment publicId so Android regex /pay_[a-zA-Z0-9]+/ can extract it
-    const tn = input.publicPaymentId;
+    const tn = input.publicPaymentId.trim();
+    const cleanVpa = (upiVpa || "").trim();
+    const cleanPn = (upiName || "Merchant").trim();
 
-    const upiUri =
-      `upi://pay?pa=${encodeURIComponent(upiVpa)}` +
-      `&pn=${encodeURIComponent(upiName)}` +
+    // Universal standard UPI URI (NPCI compliant)
+    // Note: pa uses literal '@' so UPI apps properly resolve the handle without decode errors.
+    let upiUri =
+      `upi://pay?pa=${encodeURIComponent(cleanVpa).replace(/%40/g, "@")}` +
+      `&pn=${encodeURIComponent(cleanPn)}` +
       `&am=${amountRupees}` +
       `&cu=${input.currency}` +
-      `&tn=${encodeURIComponent(tn)}` +
-      `&tr=${encodeURIComponent(tn)}` +
-      `&mode=02&mc=0000&purpose=00`;
+      `&tn=${encodeURIComponent(tn)}`;
+
+    // For verified Business / Current Accounts (P2M), append MCC and merchant parameters
+    if (accountType === "MERCHANT") {
+      const cleanMcc = (mcc || "5411").trim();
+      upiUri += `&mc=${encodeURIComponent(cleanMcc)}&mode=02&purpose=00`;
+    }
 
     const qrDataUrl = await QRCode.toDataURL(upiUri, { margin: 1, width: 320 });
 

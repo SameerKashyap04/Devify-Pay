@@ -8,6 +8,8 @@ import { useRouter } from "next/navigation";
 interface Settings {
   upiVpa: string | null;
   merchantName: string | null;
+  accountType: "PERSONAL" | "MERCHANT";
+  mcc: string | null;
   upiNotifySecretSet: boolean;
   updatedAt: string | null;
 }
@@ -22,6 +24,8 @@ export default function SettingsPage() {
 
   const [upiVpa, setUpiVpa] = useState("");
   const [merchantName, setMerchantName] = useState("");
+  const [accountType, setAccountType] = useState<"PERSONAL" | "MERCHANT">("PERSONAL");
+  const [mcc, setMcc] = useState("");
   const [upiNotifySecret, setUpiNotifySecret] = useState("");
 
   useEffect(() => {
@@ -32,6 +36,8 @@ export default function SettingsPage() {
       setSettings(data);
       setUpiVpa(data.upiVpa ?? "");
       setMerchantName(data.merchantName ?? "");
+      setAccountType(data.accountType ?? "PERSONAL");
+      setMcc(data.mcc ?? "");
       setLoading(false);
     })();
   }, [router]);
@@ -45,6 +51,8 @@ export default function SettingsPage() {
       const body: Record<string, string | null> = {
         upiVpa: upiVpa.trim() || null,
         merchantName: merchantName.trim() || null,
+        accountType: accountType,
+        mcc: accountType === "MERCHANT" ? (mcc.trim() || "5411") : null,
       };
       if (upiNotifySecret.trim()) {
         body.upiNotifySecret = upiNotifySecret.trim();
@@ -62,6 +70,8 @@ export default function SettingsPage() {
       setSettings({
         upiVpa: updated.upiVpa,
         merchantName: updated.merchantName,
+        accountType: updated.accountType ?? "PERSONAL",
+        mcc: updated.mcc ?? null,
         upiNotifySecretSet: settings?.upiNotifySecretSet || !!(upiNotifySecret.trim()),
         updatedAt: updated.updatedAt,
       });
@@ -99,35 +109,109 @@ export default function SettingsPage() {
             {/* UPI Merchant Details */}
             <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
               <div className="border-b border-gray-100 bg-gray-50 px-5 py-3">
-                <div className="text-xs font-semibold uppercase tracking-wide text-gray-500">UPI Merchant Details</div>
+                <div className="text-xs font-semibold uppercase tracking-wide text-gray-500">UPI Receiver Details</div>
               </div>
               <div className="divide-y divide-gray-100">
+                {/* Account Type Selector */}
+                <div className="px-5 py-4">
+                  <div className="text-sm font-medium text-gray-700 mb-1">Account Type</div>
+                  <div className="text-xs text-gray-500 mb-3">
+                    Select your bank account type. Personal accounts use clean P2P intent to avoid Google Pay security blocks.
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <label
+                      onClick={() => setAccountType("PERSONAL")}
+                      className={`relative flex cursor-pointer flex-col rounded-xl border p-3.5 transition-all ${
+                        accountType === "PERSONAL"
+                          ? "border-gray-900 bg-gray-50/70 ring-1 ring-gray-900"
+                          : "border-gray-200 bg-white hover:border-gray-300"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-semibold text-gray-900">Personal (Savings A/C)</span>
+                        <input
+                          type="radio"
+                          name="accountType"
+                          value="PERSONAL"
+                          checked={accountType === "PERSONAL"}
+                          onChange={() => setAccountType("PERSONAL")}
+                          className="h-4 w-4 text-gray-900 focus:ring-gray-900"
+                        />
+                      </div>
+                      <span className="mt-1 text-xs text-gray-500">
+                        For individual UPI IDs (@ptaxis, @okaxis, @paytm, @ybl). Prevents network declines.
+                      </span>
+                    </label>
+
+                    <label
+                      onClick={() => setAccountType("MERCHANT")}
+                      className={`relative flex cursor-pointer flex-col rounded-xl border p-3.5 transition-all ${
+                        accountType === "MERCHANT"
+                          ? "border-gray-900 bg-gray-50/70 ring-1 ring-gray-900"
+                          : "border-gray-200 bg-white hover:border-gray-300"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-semibold text-gray-900">Business (Current A/C)</span>
+                        <input
+                          type="radio"
+                          name="accountType"
+                          value="MERCHANT"
+                          checked={accountType === "MERCHANT"}
+                          onChange={() => setAccountType("MERCHANT")}
+                          className="h-4 w-4 text-gray-900 focus:ring-gray-900"
+                        />
+                      </div>
+                      <span className="mt-1 text-xs text-gray-500">
+                        For registered merchant UPI IDs. Enables Merchant Category Code (MCC).
+                      </span>
+                    </label>
+                  </div>
+                </div>
+
                 <div className="flex items-center gap-4 px-5 py-4">
                   <div className="w-40 shrink-0">
                     <div className="text-sm font-medium text-gray-700">UPI VPA / UPI ID</div>
-                    <div className="mt-0.5 text-xs text-gray-400">e.g. name@okicici</div>
+                    <div className="mt-0.5 text-xs text-gray-400">e.g. 8822509004@ptaxis</div>
                   </div>
                   <input
                     type="text"
                     value={upiVpa}
                     onChange={e => setUpiVpa(e.target.value)}
-                    placeholder="yourname@okicici"
+                    placeholder="yourname@okaxis"
                     className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
                   />
                 </div>
                 <div className="flex items-center gap-4 px-5 py-4">
                   <div className="w-40 shrink-0">
-                    <div className="text-sm font-medium text-gray-700">Merchant Name</div>
+                    <div className="text-sm font-medium text-gray-700">Payee / Store Name</div>
                     <div className="mt-0.5 text-xs text-gray-400">Shown on QR codes</div>
                   </div>
                   <input
                     type="text"
                     value={merchantName}
                     onChange={e => setMerchantName(e.target.value)}
-                    placeholder="My Store"
+                    placeholder="Sameer Kashyap"
                     className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
                   />
                 </div>
+
+                {accountType === "MERCHANT" && (
+                  <div className="flex items-center gap-4 px-5 py-4 bg-amber-50/40">
+                    <div className="w-40 shrink-0">
+                      <div className="text-sm font-medium text-gray-700">Merchant Code (MCC)</div>
+                      <div className="mt-0.5 text-xs text-gray-400">4-digit code (e.g. 5411, 7372)</div>
+                    </div>
+                    <input
+                      type="text"
+                      value={mcc}
+                      onChange={e => setMcc(e.target.value)}
+                      placeholder="5411 (Retail/Grocery) or 7372 (Software)"
+                      maxLength={4}
+                      className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-gray-900"
+                    />
+                  </div>
+                )}
               </div>
             </div>
 

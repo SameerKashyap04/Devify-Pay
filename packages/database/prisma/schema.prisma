@@ -497,6 +497,8 @@ model SystemConfig {
   id              String   @id @default("singleton")
   upiVpa          String?  @map("upi_vpa")          // UPI VPA e.g. merchant@okicici
   merchantName    String?  @map("merchant_name")    // Display name on QR
+  accountType     String   @default("PERSONAL") @map("account_type") // "PERSONAL" (Savings/P2P) or "MERCHANT" (Current/P2M)
+  mcc             String?  @map("mcc")              // Merchant Category Code e.g. 5411, 7372 (for Current/Business accounts)
   upiNotifySecret String?  @map("upi_notify_secret") // Secret for the Android companion app
   updatedAt       DateTime @updatedAt @map("updated_at")
 

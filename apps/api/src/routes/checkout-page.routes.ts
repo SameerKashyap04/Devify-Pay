@@ -234,41 +234,45 @@ function openUpiApp(app,evt){
   var isIOS=/iPhone|iPad|iPod/i.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>0);
   var isAndroid=/Android/i.test(navigator.userAgent);
 
-  // Extract VPA, payee name, amount, and note from upiUri
+  // Extract parameters from upiUri
   var rawVpa=(upiUri.match(/pa=([^&]+)/)||[])[1]||'';
-  var cleanVpa=decodeURIComponent(rawVpa);
+  var cleanVpa=decodeURIComponent(rawVpa).trim();
   var rawPn=(upiUri.match(/pn=([^&]+)/)||[])[1]||'Merchant';
-  var cleanPn=decodeURIComponent(rawPn);
+  var cleanPn=decodeURIComponent(rawPn).trim();
   var rawAm=(upiUri.match(/am=([^&]+)/)||[])[1]||'0.00';
   var cleanAm=parseFloat(rawAm).toFixed(2);
   var rawTn=(upiUri.match(/tn=([^&]+)/)||[])[1]||'';
-  var cleanTn=decodeURIComponent(rawTn);
+  var cleanTn=decodeURIComponent(rawTn).trim();
+  var rawMc=(upiUri.match(/mc=([^&]+)/)||[])[1]||'';
+  var rawMode=(upiUri.match(/mode=([^&]+)/)||[])[1]||'';
+  var rawPurpose=(upiUri.match(/purpose=([^&]+)/)||[])[1]||'';
 
-  // Build standard NPCI-compliant query payload (pa with unescaped @ for merchant detection)
-  var npciQuery='pa='+encodeURIComponent(cleanVpa).replace(/%40/g,'@')+
+  // Universal standard UPI query payload (clean pa with unescaped @)
+  var upiQuery='pa='+encodeURIComponent(cleanVpa).replace(/%40/g,'@')+
                 '&pn='+encodeURIComponent(cleanPn)+
                 '&am='+cleanAm+
                 '&cu=INR'+
                 '&tn='+encodeURIComponent(cleanTn)+
-                '&tr='+encodeURIComponent(cleanTn)+
-                '&mode=02&mc=0000&purpose=00';
+                (rawMc ? '&mc='+encodeURIComponent(rawMc) : '')+
+                (rawMode ? '&mode='+encodeURIComponent(rawMode) : '')+
+                (rawPurpose ? '&purpose='+encodeURIComponent(rawPurpose) : '');
 
-  var standardUpiUri='upi://pay?'+npciQuery;
+  var standardUpiUri='upi://pay?'+upiQuery;
 
   var androidIntents={
-    gpay:'intent://pay?'+npciQuery+'#Intent;scheme=upi;package=com.google.android.apps.nbu.paisa.user;action=android.intent.action.VIEW;end;',
-    phonepe:'intent://pay?'+npciQuery+'#Intent;scheme=upi;package=com.phonepe.app;action=android.intent.action.VIEW;end;',
-    paytm:'intent://pay?'+npciQuery+'#Intent;scheme=upi;package=net.one97.paytm;action=android.intent.action.VIEW;end;',
-    bhim:'intent://pay?'+npciQuery+'#Intent;scheme=upi;package=in.org.npci.upiapp;action=android.intent.action.VIEW;end;',
-    supermoney:'intent://pay?'+npciQuery+'#Intent;scheme=upi;package=money.super.payments;action=android.intent.action.VIEW;end;'
+    gpay:'intent://pay?'+upiQuery+'#Intent;scheme=upi;package=com.google.android.apps.nbu.paisa.user;action=android.intent.action.VIEW;end;',
+    phonepe:'intent://pay?'+upiQuery+'#Intent;scheme=upi;package=com.phonepe.app;action=android.intent.action.VIEW;end;',
+    paytm:'intent://pay?'+upiQuery+'#Intent;scheme=upi;package=net.one97.paytm;action=android.intent.action.VIEW;end;',
+    bhim:'intent://pay?'+upiQuery+'#Intent;scheme=upi;package=in.org.npci.upiapp;action=android.intent.action.VIEW;end;',
+    supermoney:'intent://pay?'+upiQuery+'#Intent;scheme=upi;package=money.super.payments;action=android.intent.action.VIEW;end;'
   };
 
   var iosSchemes={
-    gpay:'gpay://upi/pay?'+npciQuery,
-    phonepe:'phonepe://pay?'+npciQuery,
-    paytm:'paytmmp://pay?'+npciQuery,
-    bhim:'bhim://pay?'+npciQuery,
-    supermoney:'super://pay?'+npciQuery
+    gpay:'gpay://upi/pay?'+upiQuery,
+    phonepe:'phonepe://pay?'+upiQuery,
+    paytm:'paytmmp://pay?'+upiQuery,
+    bhim:'bhim://pay?'+upiQuery,
+    supermoney:'super://pay?'+upiQuery
   };
 
   var playStores={
