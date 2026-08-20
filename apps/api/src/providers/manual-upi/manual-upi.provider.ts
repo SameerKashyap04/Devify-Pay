@@ -48,25 +48,22 @@ export class ManualUpiProvider implements PaymentProvider {
     const accountType = config?.accountType ?? "PERSONAL";
     const mcc = config?.mcc;
 
-    const amountRupees = (input.amount / 100).toFixed(2);
-    // CRITICAL: tn = payment publicId so Android regex /pay_[a-zA-Z0-9]+/ can extract it
-    const tn = input.publicPaymentId.trim();
+    const cleanAmount = (input.amount / 100).toString();
     const cleanVpa = (upiVpa || "").trim();
     const cleanPn = (upiName || "Merchant").trim();
 
-    // Universal standard UPI URI (NPCI compliant)
-    // Note: pa uses literal '@' so UPI apps properly resolve the handle without decode errors.
+    // Universal standard UPI URI (matches standard Paytm/PhonePe QR format)
     let upiUri =
       `upi://pay?pa=${encodeURIComponent(cleanVpa).replace(/%40/g, "@")}` +
       `&pn=${encodeURIComponent(cleanPn)}` +
-      `&am=${amountRupees}` +
-      `&cu=${input.currency}` +
-      `&tn=${encodeURIComponent(tn)}`;
+      `&am=${cleanAmount}` +
+      `&cu=${input.currency}`;
 
-    // For verified Business / Current Accounts (P2M), append MCC and merchant parameters
+    // For verified Business / Current Accounts (P2M), append tn note, MCC, and merchant parameters
     if (accountType === "MERCHANT") {
+      const tn = input.publicPaymentId.trim();
       const cleanMcc = (mcc || "5411").trim();
-      upiUri += `&mc=${encodeURIComponent(cleanMcc)}&mode=02&purpose=00`;
+      upiUri += `&tn=${encodeURIComponent(tn)}&mc=${encodeURIComponent(cleanMcc)}&mode=02&purpose=00`;
     }
 
     const qrDataUrl = await QRCode.toDataURL(upiUri, { margin: 1, width: 320 });

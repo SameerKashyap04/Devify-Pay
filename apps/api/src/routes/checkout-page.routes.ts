@@ -239,8 +239,8 @@ function openUpiApp(app,evt){
   var cleanVpa=decodeURIComponent(rawVpa).trim();
   var rawPn=(upiUri.match(/pn=([^&]+)/)||[])[1]||'Merchant';
   var cleanPn=decodeURIComponent(rawPn).trim();
-  var rawAm=(upiUri.match(/am=([^&]+)/)||[])[1]||'0.00';
-  var cleanAm=parseFloat(rawAm).toFixed(2);
+  var rawAm=(upiUri.match(/am=([^&]+)/)||[])[1]||'';
+  var cleanAm=rawAm ? parseFloat(rawAm).toString() : '';
   var rawTn=(upiUri.match(/tn=([^&]+)/)||[])[1]||'';
   var cleanTn=decodeURIComponent(rawTn).trim();
   var rawMc=(upiUri.match(/mc=([^&]+)/)||[])[1]||'';
@@ -250,9 +250,9 @@ function openUpiApp(app,evt){
   // Universal standard UPI query payload (clean pa with unescaped @)
   var upiQuery='pa='+encodeURIComponent(cleanVpa).replace(/%40/g,'@')+
                 '&pn='+encodeURIComponent(cleanPn)+
-                '&am='+cleanAm+
+                (cleanAm ? '&am='+cleanAm : '')+
                 '&cu=INR'+
-                '&tn='+encodeURIComponent(cleanTn)+
+                (cleanTn ? '&tn='+encodeURIComponent(cleanTn) : '')+
                 (rawMc ? '&mc='+encodeURIComponent(rawMc) : '')+
                 (rawMode ? '&mode='+encodeURIComponent(rawMode) : '')+
                 (rawPurpose ? '&purpose='+encodeURIComponent(rawPurpose) : '');

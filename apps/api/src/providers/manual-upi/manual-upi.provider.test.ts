@@ -50,11 +50,10 @@ describe("ManualUpiProvider", () => {
     expect(uri).toContain("upi://pay?");
     expect(uri).toContain("pa=8822509004@ptaxis");
     expect(uri).toContain("pn=SAMEER%20KASHYAP");
-    expect(uri).toContain("am=349.00");
+    expect(uri).toContain("am=349");
     expect(uri).toContain("cu=INR");
-    expect(uri).toContain("tn=pay_test123");
 
-    // Critical: Ensure no merchant mode or bogus MCC flags that cause risk declines
+    // Critical: Ensure no merchant mode, tn token, or bogus MCC flags on personal accounts
     expect(uri).not.toContain("mode=02");
     expect(uri).not.toContain("mc=0000");
     expect(uri).not.toContain("purpose=00");
@@ -83,7 +82,8 @@ describe("ManualUpiProvider", () => {
     const uri = result.upiUri!;
     expect(uri).toContain("pa=business@icici");
     expect(uri).toContain("pn=Devify%20Technologies");
-    expect(uri).toContain("am=999.00");
+    expect(uri).toContain("am=999");
+    expect(uri).toContain("tn=pay_merch789");
     expect(uri).toContain("mc=7372");
     expect(uri).toContain("mode=02");
     expect(uri).toContain("purpose=00");
