@@ -48,22 +48,27 @@ export class ManualUpiProvider implements PaymentProvider {
     const accountType = config?.accountType ?? "PERSONAL";
     const mcc = config?.mcc;
 
-    const cleanAmount = (input.amount / 100).toString();
     const cleanVpa = (upiVpa || "").trim();
-    const cleanPn = (upiName || "Merchant").trim();
+    const cleanPn = (upiName || "Merchant").trim().toUpperCase();
+    const amountRupees = (input.amount / 100).toString();
 
-    // Universal standard UPI URI (matches standard Paytm/PhonePe QR format)
-    let upiUri =
-      `upi://pay?pa=${encodeURIComponent(cleanVpa).replace(/%40/g, "@")}` +
-      `&pn=${encodeURIComponent(cleanPn)}` +
-      `&am=${cleanAmount}` +
-      `&cu=${input.currency}`;
+    let upiUri: string;
 
-    // For verified Business / Current Accounts (P2M), append tn note, MCC, and merchant parameters
     if (accountType === "MERCHANT") {
+      // Merchant / Current Account: full NPCI-compliant merchant URI
       const tn = input.publicPaymentId.trim();
       const cleanMcc = (mcc || "5411").trim();
-      upiUri += `&tn=${encodeURIComponent(tn)}&mc=${encodeURIComponent(cleanMcc)}&mode=02&purpose=00`;
+      upiUri =
+        `upi://pay?pa=${encodeURIComponent(cleanVpa).replace(/%40/g, "@")}` +
+        `&pn=${encodeURIComponent(cleanPn)}` +
+        `&am=${amountRupees}` +
+        `&cu=${input.currency}` +
+        `&tn=${encodeURIComponent(tn)}` +
+        `&mc=${encodeURIComponent(cleanMcc)}&mode=02&purpose=00`;
+    } else {
+      // Personal / Savings Account: Paytm-identical minimal format
+      // Uses raw spaces (not %20), no cu=, no tn= — exactly like native Paytm/PhonePe personal QR
+      upiUri = `upi://pay?pa=${cleanVpa}&pn=${cleanPn}&am=${amountRupees}`;
     }
 
     const qrDataUrl = await QRCode.toDataURL(upiUri, { margin: 1, width: 320 });

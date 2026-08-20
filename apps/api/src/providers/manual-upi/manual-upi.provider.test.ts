@@ -26,10 +26,10 @@ describe("ManualUpiProvider", () => {
     provider = new ManualUpiProvider();
   });
 
-  it("generates a clean standard UPI URI without mode=02, mc=0000, or purpose=00", async () => {
+  it("generates Paytm-identical personal QR URI with raw spaces, no cu=, no tn=", async () => {
     (prisma.systemConfig.findUnique as any).mockResolvedValue({
       upiVpa: "8822509004@ptaxis",
-      merchantName: "SAMEER KASHYAP",
+      merchantName: "Sameer Kashyap",
     });
 
     const result = await provider.createPayment({
@@ -47,18 +47,18 @@ describe("ManualUpiProvider", () => {
     expect(result.qrDataUrl).toBeDefined();
 
     const uri = result.upiUri!;
-    expect(uri).toContain("upi://pay?");
-    expect(uri).toContain("pa=8822509004@ptaxis");
-    expect(uri).toContain("pn=SAMEER%20KASHYAP");
-    expect(uri).toContain("am=349");
-    expect(uri).toContain("cu=INR");
+    // Exact Paytm-style format: raw spaces, no encoding, minimal params
+    expect(uri).toBe("upi://pay?pa=8822509004@ptaxis&pn=SAMEER KASHYAP&am=349");
 
-    // Critical: Ensure no merchant mode, tn token, or bogus MCC flags on personal accounts
+    // Must NOT contain any merchant/encoded artifacts
     expect(uri).not.toContain("mode=02");
-    expect(uri).not.toContain("mc=0000");
+    expect(uri).not.toContain("mc=");
     expect(uri).not.toContain("purpose=00");
     expect(uri).not.toContain("tr=");
-    expect(uri).not.toContain("%40"); // @ should not be encoded in pa
+    expect(uri).not.toContain("tn=");
+    expect(uri).not.toContain("cu=");
+    expect(uri).not.toContain("%20");
+    expect(uri).not.toContain("%40");
   });
 
   it("generates merchant parameters when accountType is set to MERCHANT", async () => {
@@ -81,11 +81,12 @@ describe("ManualUpiProvider", () => {
 
     const uri = result.upiUri!;
     expect(uri).toContain("pa=business@icici");
-    expect(uri).toContain("pn=Devify%20Technologies");
+    expect(uri).toContain("pn=DEVIFY%20TECHNOLOGIES");
     expect(uri).toContain("am=999");
     expect(uri).toContain("tn=pay_merch789");
     expect(uri).toContain("mc=7372");
     expect(uri).toContain("mode=02");
     expect(uri).toContain("purpose=00");
+    expect(uri).toContain("cu=INR");
   });
 });
