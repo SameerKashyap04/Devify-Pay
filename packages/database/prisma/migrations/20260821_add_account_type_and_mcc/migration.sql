@@ -1,0 +1,3 @@
+-- AlterTable
+ALTER TABLE "system_config" ADD COLUMN IF NOT EXISTS "account_type" TEXT NOT NULL DEFAULT 'PERSONAL';
+ALTER TABLE "system_config" ADD COLUMN IF NOT EXISTS "mcc" TEXT;

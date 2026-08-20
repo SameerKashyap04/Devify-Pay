@@ -28,9 +28,13 @@ async function getSystemConfig() {
   if (systemConfigCache && systemConfigCache.expiresAt > Date.now()) {
     return systemConfigCache.data;
   }
-  const config = await prisma.systemConfig.findUnique({ where: { id: "singleton" } });
-  systemConfigCache = { data: config, expiresAt: Date.now() + 10000 };
-  return config;
+  try {
+    const config = await prisma.systemConfig.findUnique({ where: { id: "singleton" } });
+    systemConfigCache = { data: config, expiresAt: Date.now() + 10000 };
+    return config;
+  } catch {
+    return null;
+  }
 }
 
 export class ManualUpiProvider implements PaymentProvider {

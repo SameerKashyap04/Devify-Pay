@@ -17,26 +17,40 @@ export async function adminSettingsRoutes(app: FastifyInstance) {
     "/v1/admin/settings",
     { preHandler: [adminSessionAuth] },
     async (_req, _reply) => {
-      const config = await prisma.systemConfig.findUnique({
-        where: { id: "singleton" },
-        select: {
-          upiVpa: true,
-          merchantName: true,
-          accountType: true,
-          mcc: true,
-          upiNotifySecret: true,
-          updatedAt: true,
-        },
-      });
+      try {
+        const config = await prisma.systemConfig.findUnique({
+          where: { id: "singleton" },
+        });
 
-      return {
-        upiVpa: config?.upiVpa ?? null,
-        merchantName: config?.merchantName ?? null,
-        accountType: config?.accountType ?? "PERSONAL",
-        mcc: config?.mcc ?? null,
-        upiNotifySecretSet: !!(config?.upiNotifySecret),
-        updatedAt: config?.updatedAt ?? null,
-      };
+        return {
+          upiVpa: config?.upiVpa ?? null,
+          merchantName: config?.merchantName ?? null,
+          accountType: (config as any)?.accountType ?? "PERSONAL",
+          mcc: (config as any)?.mcc ?? null,
+          upiNotifySecretSet: !!(config?.upiNotifySecret),
+          updatedAt: config?.updatedAt ?? null,
+        };
+      } catch (err: any) {
+        // Self-heal: ensure columns exist if migration was delayed
+        try {
+          await prisma.$executeRawUnsafe(`
+            ALTER TABLE "system_config" ADD COLUMN IF NOT EXISTS "account_type" TEXT NOT NULL DEFAULT 'PERSONAL';
+            ALTER TABLE "system_config" ADD COLUMN IF NOT EXISTS "mcc" TEXT;
+          `);
+          const config = await prisma.systemConfig.findUnique({ where: { id: "singleton" } });
+          return {
+            upiVpa: config?.upiVpa ?? null,
+            merchantName: config?.merchantName ?? null,
+            accountType: (config as any)?.accountType ?? "PERSONAL",
+            mcc: (config as any)?.mcc ?? null,
+            upiNotifySecretSet: !!(config?.upiNotifySecret),
+            updatedAt: config?.updatedAt ?? null,
+          };
+        } catch (e) {
+          app.log.error({ err, e }, "Failed to load system config");
+          throw err;
+        }
+      }
     }
   );
 
@@ -52,34 +66,73 @@ export async function adminSettingsRoutes(app: FastifyInstance) {
 
       const { upiVpa, merchantName, accountType, mcc, upiNotifySecret } = body.data;
 
-      const config = await prisma.systemConfig.upsert({
-        where: { id: "singleton" },
-        create: {
-          id: "singleton",
-          upiVpa: upiVpa ?? null,
-          merchantName: merchantName ?? null,
-          accountType: accountType ?? "PERSONAL",
-          mcc: mcc ?? null,
-          upiNotifySecret: upiNotifySecret ?? null,
-        },
-        update: {
-          ...(upiVpa !== undefined && { upiVpa }),
-          ...(merchantName !== undefined && { merchantName }),
-          ...(accountType !== undefined && { accountType: accountType ?? "PERSONAL" }),
-          ...(mcc !== undefined && { mcc }),
-          ...(upiNotifySecret !== undefined && { upiNotifySecret }),
-        },
-        select: { upiVpa: true, merchantName: true, accountType: true, mcc: true, updatedAt: true },
-      });
+      try {
+        const config = await prisma.systemConfig.upsert({
+          where: { id: "singleton" },
+          create: {
+            id: "singleton",
+            upiVpa: upiVpa ?? null,
+            merchantName: merchantName ?? null,
+            accountType: accountType ?? "PERSONAL",
+            mcc: mcc ?? null,
+            upiNotifySecret: upiNotifySecret ?? null,
+          },
+          update: {
+            ...(upiVpa !== undefined && { upiVpa }),
+            ...(merchantName !== undefined && { merchantName }),
+            ...(accountType !== undefined && { accountType: accountType ?? "PERSONAL" }),
+            ...(mcc !== undefined && { mcc }),
+            ...(upiNotifySecret !== undefined && { upiNotifySecret }),
+          },
+        });
 
-      return {
-        success: true,
-        upiVpa: config.upiVpa,
-        merchantName: config.merchantName,
-        accountType: config.accountType,
-        mcc: config.mcc,
-        updatedAt: config.updatedAt,
-      };
+        return {
+          success: true,
+          upiVpa: config.upiVpa,
+          merchantName: config.merchantName,
+          accountType: (config as any).accountType ?? "PERSONAL",
+          mcc: (config as any).mcc ?? null,
+          updatedAt: config.updatedAt,
+        };
+      } catch (err: any) {
+        // Self-heal: ensure columns exist
+        try {
+          await prisma.$executeRawUnsafe(`
+            ALTER TABLE "system_config" ADD COLUMN IF NOT EXISTS "account_type" TEXT NOT NULL DEFAULT 'PERSONAL';
+            ALTER TABLE "system_config" ADD COLUMN IF NOT EXISTS "mcc" TEXT;
+          `);
+          const config = await prisma.systemConfig.upsert({
+            where: { id: "singleton" },
+            create: {
+              id: "singleton",
+              upiVpa: upiVpa ?? null,
+              merchantName: merchantName ?? null,
+              accountType: accountType ?? "PERSONAL",
+              mcc: mcc ?? null,
+              upiNotifySecret: upiNotifySecret ?? null,
+            },
+            update: {
+              ...(upiVpa !== undefined && { upiVpa }),
+              ...(merchantName !== undefined && { merchantName }),
+              ...(accountType !== undefined && { accountType: accountType ?? "PERSONAL" }),
+              ...(mcc !== undefined && { mcc }),
+              ...(upiNotifySecret !== undefined && { upiNotifySecret }),
+            },
+          });
+
+          return {
+            success: true,
+            upiVpa: config.upiVpa,
+            merchantName: config.merchantName,
+            accountType: (config as any).accountType ?? "PERSONAL",
+            mcc: (config as any).mcc ?? null,
+            updatedAt: config.updatedAt,
+          };
+        } catch (e) {
+          app.log.error({ err, e }, "Failed to update system config");
+          throw err;
+        }
+      }
     }
   );
 }
